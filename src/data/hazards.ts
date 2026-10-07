@@ -131,13 +131,13 @@ export const DISASTERS: Record<DisasterKind, DisasterDef> = {
   },
   blizzard: {
     name: 'blizzard', rate: 0.5,
-    where: (p) => (p.y < 16 ? 1.6 : p.y < 26 ? 0.4 : 0) + p.mountain * 0.5,
+    where: (p) => (p.y < 14 ? 1.6 : p.y < 24 ? 0.4 : 0) + p.mountain * 0.5,
     instant: { pop: 0.003, hurt: 0.1, wound: 0.15, wealth: 0.03 }, leaves: [['cold', 1]],
     text: ['Snow buries {L} to the second storey, and keeps falling.', 'A killing cold settles on {L}.'],
   },
   drought: {
     name: 'drought', rate: 0.4,
-    where: (p) => (p.kind === 'village' || p.kind === 'wild' || p.kind === 'town' ? 1 : 0.5) * (p.features.includes('desert') ? 2 : 1) * (p.y > 45 ? 1.4 : 0.8),
+    where: (p) => (p.kind === 'village' || p.kind === 'wild' || p.kind === 'town' ? 1 : 0.5) * (p.features.includes('desert') ? 2 : 1) * (p.y > 44 ? 1.4 : 0.8),
     instant: { pop: 0, hurt: 0, wound: 0, wealth: 0.03 }, leaves: [['drought', 0.9]],
     text: ['No rain has fallen on {L} for a year. The wells are dry and the fields are dust.', 'The harvest fails around {L}. Then it fails again.'],
   },

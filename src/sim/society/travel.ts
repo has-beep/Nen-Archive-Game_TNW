@@ -9,12 +9,13 @@ import { L, P, log } from '../history'
 import { addHazard } from './disasters'
 import type { Id, Person, Trip, World } from '../types'
 import { placeK, rng, touch } from '../world'
+import { KM_PER_TILE } from '../../data/geography'
 
 const AIR_KM = 2600, SEA_KM = 900, LAND_KM = 450, WING_KM = 1400
 
 export function km(w: World, a: Id, b: Id): number {
   const A = w.places[a], B = w.places[b]
-  return Math.sqrt((A.x - B.x) ** 2 + (A.y - B.y) ** 2) * 250
+  return Math.sqrt((A.x - B.x) ** 2 + (A.y - B.y) ** 2) * KM_PER_TILE
 }
 
 export interface Route {

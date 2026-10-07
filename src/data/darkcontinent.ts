@@ -69,11 +69,11 @@ export interface RegionDef {
 /** Where expeditions land, and the regions beyond. Coordinates sit at the
  *  very edges of the lake map; the interface draws them past its rim. */
 export const DC_REGIONS: RegionDef[] = [
-  { key: 'dc_northeast', name: 'The North-Eastern Mountains', x: 117, y: 2, depth: 6, danger: 0.85, desc: 'A mountain range nobody has climbed and come back to describe. Something up there keeps people.' },
-  { key: 'dc_ruins', name: 'The Ruined City of the North Shore', x: 60, y: 1, depth: 4, danger: 0.8, desc: 'An ancient city on the north shore of Lake Mobius, older than every nation inside the lake, and still guarded.' },
-  { key: 'dc_swamp', name: 'The Southern Swamps', x: 70, y: 75, depth: 5, danger: 0.9, desc: 'Swamps south of the lake where a cereal grows that might let a man live for centuries, and where the snakes have two tails.' },
-  { key: 'dc_southeast', name: 'The South-Eastern Haze', x: 117, y: 74, depth: 7, danger: 0.9, desc: 'A region always half-hidden in a shining haze. The haze is alive.' },
-  { key: 'dc_southshore', name: 'The South Shore', x: 28, y: 75, depth: 3, danger: 0.85, desc: 'Where Beyond Netero once landed, found a plant that turns things to gold, and brought something terrible home.' },
+  { key: 'dc_northeast', name: 'The North-Eastern Mountains', x: 100, y: -8, depth: 6, danger: 0.85, desc: 'A mountain range nobody has climbed and come back to describe. Something up there keeps people.' },
+  { key: 'dc_ruins', name: 'The Ruined City of the North Shore', x: 54, y: -8, depth: 4, danger: 0.8, desc: 'An ancient city on the north shore of Lake Mobius, older than every nation inside the lake, and still guarded.' },
+  { key: 'dc_swamp', name: 'The Southern Swamps', x: 68, y: 80, depth: 5, danger: 0.9, desc: 'Swamps south of the lake where a cereal grows that might let a man live for centuries, and where the snakes have two tails.' },
+  { key: 'dc_southeast', name: 'The South-Eastern Haze', x: 112, y: 79, depth: 7, danger: 0.9, desc: 'A region always half-hidden in a shining haze. The haze is alive.' },
+  { key: 'dc_southshore', name: 'The South Shore', x: 38, y: 79, depth: 3, danger: 0.85, desc: 'Where Beyond Netero once landed, found a plant that turns things to gold, and brought something terrible home.' },
 ]
 
 export const CALAMITIES: CalamityDef[] = [
@@ -146,7 +146,7 @@ export function rollUnknowns(pick: <T>(a: T[]) => T, int: (n: number) => number)
   const hopes = UNKNOWN_HOPES.slice()
   const regions: RegionDef[] = []
   const calamities: CalamityDef[] = []
-  const edge: [number, number][] = [[2, 2], [2, 38], [118, 38], [40, 1], [90, 1], [45, 75], [95, 75], [2, 55]]
+  const edge: [number, number][] = [[-7, -5], [-8, 36], [135, 36], [26, -8], [82, -9], [16, 79], [90, 81], [-7, 62]]
   for (let i = 0; i < n && places.length && things.length; i++) {
     const pn = places.splice(int(places.length), 1)[0]
     const [tn, td, mode, leak] = things.splice(int(things.length), 1)[0]

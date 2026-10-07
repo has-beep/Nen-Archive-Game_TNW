@@ -1,48 +1,58 @@
 /**
- * The map. One tile is 250 km. The series' world is Earth's continents
- * rearranged inside Lake Mobius, so each landmass is sized like the real one
- * it mirrors: South America upside down in the north (Kukan'yu), North
- * America on its side in the middle (the Yorbian continent, Saherta), Africa
- * in the west (Padokea, Mimbo), Australia between (Begerosse), Eurasia to the
- * east (Kakin and the Azian continent).
+ * The map. Coastlines are traced from the official world map (the 2011
+ * anime's, checked against the manga's map in chapter 38) by
+ * scripts/trace-map.py into coast.ts. One tile is 200 km; the known world
+ * is about 25,000 km across, inside Lake Mobius. Past the edges of this
+ * map, across the lake, is the Dark Continent.
  *
- * Coastlines are drawn from these blobs with noise at render time, so the
- * shapes are lore-faithful in layout and generated in detail.
+ * Layout, west to east: the Padokea and Mimbo continent in the north-west,
+ * the long Kukan'yu continent below it with Jappon offshore, the Yorbian
+ * continent in the south-west (Saherta, Yorknew, and the Balsa Islands at
+ * its southern tip), open water in the middle with Greed Island and
+ * Begerossé, and the Azian continent filling the east: Kakin in the north,
+ * a strait, then Ochima.
  */
-export const KM_PER_TILE = 250
-export const MAP_W = 120
-export const MAP_H = 76
+import { COAST_LAND, COAST_WATER, TRACE_H, TRACE_W } from './coast'
 
-export interface LandMass {
-  key: string
-  name: string
-  like?: string
-  /** [x, y, radius] in tiles */
-  b: [number, number, number][]
+export const KM_PER_TILE = 200
+export const MAP_W = TRACE_W
+export const MAP_H = TRACE_H
+
+export { COAST_LAND, COAST_WATER }
+
+function inRing(ring: number[], x: number, y: number): boolean {
+  let inside = false
+  for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2) {
+    const xi = ring[i], yi = ring[i + 1], xj = ring[j], yj = ring[j + 1]
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside
+  }
+  return inside
 }
 
-export const LAND: LandMass[] = [
-  { key: 'north', name: 'Northern continent', like: 'South America, upside down', b: [[58, 4, 3.1], [58, 9, 4.5], [57.5, 15, 6.3], [57, 22, 8.2], [62, 24.5, 5.5], [51.5, 24, 5.1], [57, 28, 4.4], [50, 14, 3.6]] },
-  { key: 'yorbian', name: 'Yorbian continent', like: 'North America, on its side', b: [[52, 44, 7.1], [60, 45, 7.8], [67.5, 41.5, 6.4], [63, 50.5, 5.1], [46, 50.5, 5.9], [70.5, 36, 4.6], [56, 39.5, 4.7]] },
-  { key: 'balsa', name: 'Balsa Islands', b: [[47, 65, 6.5], [56, 67, 5], [65, 68, 5.5], [41, 66, 3.5], [72, 66, 3.2]] },
-  { key: 'west', name: 'Western continent', like: 'Africa', b: [[14, 27, 8.3], [23, 27.5, 8.3], [30, 32, 6.4], [20, 35, 8.6], [25, 41, 6.9], [22.5, 47.5, 5.5], [9, 31, 4.8]] },
-  { key: 'azian', name: 'Azian continent', like: 'Eurasia', b: [[104, 9, 7], [106, 17, 10], [102, 26, 11], [109, 30, 8], [104, 47, 8.5], [110, 51, 6], [99, 50, 5.5], [97, 36, 4.5]] },
-  { key: 'begerosse', name: 'Begerossé', like: 'Australia', b: [[84, 59, 6.1], [89.5, 60.5, 4.8], [79.5, 60.5, 4.3]] },
-  { key: 'ochima', name: 'Ochima', b: [[106, 66, 5.5], [112, 64, 4.5], [101, 68, 3.5]] },
-  { key: 'jappon', name: 'Jappon', like: 'Japan', b: [[10, 11, 2.0], [11.3, 14.2, 1.4], [9.2, 7.8, 1.4]] },
-  { key: 'whale', name: 'Whale Island', b: [[38, 20, 2.6]] },
-  { key: 'greed', name: 'Greed Island', b: [[82, 43, 3.6]] },
-  { key: 'dc', name: 'The Dark Continent shore', b: [[3, 70, 5], [9, 74, 4], [2, 62, 3]] },
-]
+/** Is this point on land (and not in a lake or strait)? */
+export function isLand(x: number, y: number): boolean {
+  return COAST_LAND.some((r) => inRing(r, x, y)) && !COAST_WATER.some((r) => inRing(r, x, y))
+}
 
 /** [x, y, radius, height] */
 export const MOUNTAINS: [number, number, number, number][] = [
-  [15, 26, 7, 1.2], [22, 40, 4, 0.7], [57, 12, 4, 0.8], [62, 41, 3, 0.55], [107, 14, 5, 0.9], [100, 34, 3.5, 0.7], [10, 10, 2.5, 0.8], [86, 59, 2.5, 0.5],
+  [28.5, 9.9, 3, 1.1], // Kukuroo Mountain and the Padokean highlands
+  [36, 6, 4, 0.7], // north Mimbo
+  [16.5, 15, 3.5, 0.8], // the spine of the Kukan'yu continent
+  [70.4, 6.8, 1.6, 0.9], // the ring island is a caldera
+  [101, 12, 5, 0.9], // northern Azia
+  [93, 22, 4, 0.7], // Kakin's western hills
+  [26, 51, 4, 0.6], // central Yorbia
+  [107, 56, 4, 0.6], // Ochima uplands
+  [76, 60, 2.5, 0.5], // Begerossé
 ]
 
 export const REGION_LABELS: { n: string; x: number; y: number; sea?: boolean }[] = [
-  { n: "Kukan'yu Kingdom", x: 57, y: 13 }, { n: 'Republic of Padokea', x: 15, y: 36 }, { n: 'Mimbo Republic', x: 26, y: 43 },
-  { n: 'United States of Saherta', x: 63, y: 53 }, { n: 'Mitene Union', x: 56, y: 73 }, { n: 'Kakin Empire', x: 106, y: 19 },
-  { n: 'Azian Continent', x: 105, y: 45 }, { n: 'Begerossé Union', x: 85, y: 63 }, { n: 'Ochima Federation', x: 107, y: 70 },
-  { n: 'Lake Mobius', x: 86, y: 24, sea: true }, { n: 'Lake Mobius', x: 33, y: 62, sea: true }, { n: 'Dark Continent', x: 8, y: 68 },
+  { n: 'Republic of Padokea', x: 28, y: 4.6 }, { n: 'Mimbo Republic', x: 37, y: 14.8 },
+  { n: "Kukan'yu Kingdom", x: 19.5, y: 30.6 }, { n: 'Jappon', x: 40, y: 25 },
+  { n: 'United States of Saherta', x: 28, y: 44.6 }, { n: 'Yorbian Continent', x: 33, y: 55.5 },
+  { n: 'Mitene Union', x: 47, y: 70.6 }, { n: 'Azian Continent', x: 99, y: 22 }, { n: 'Kakin Empire', x: 97, y: 33.6 },
+  { n: 'Ochima Federation', x: 102, y: 46.8 }, { n: 'Begerossé Union', x: 76.3, y: 63 },
+  { n: 'Lake Mobius', x: 62, y: 22, sea: true }, { n: 'Lake Mobius', x: 58, y: 68, sea: true },
+  { n: 'to the Dark Continent', x: 64, y: -1.6, sea: true }, { n: 'to the Dark Continent', x: 64, y: 74.4, sea: true },
 ]

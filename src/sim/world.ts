@@ -5,6 +5,7 @@
  * after a load.
  */
 import { Rng } from './rng'
+import { KM_PER_TILE } from '../data/geography'
 import type { Id, Nation, Org, Person, Place, World } from './types'
 
 interface Index {
@@ -145,7 +146,7 @@ export function leaderOf(w: World, org: Org): Person | undefined {
 export function dist(w: World, a: Id, b: Id): number {
   const A = w.places[a], B = w.places[b]
   const dx = A.x - B.x, dy = A.y - B.y
-  return Math.sqrt(dx * dx + dy * dy) * 250
+  return Math.sqrt(dx * dx + dy * dy) * KM_PER_TILE
 }
 
 export function counter(w: World, k: string, n = 1): number {

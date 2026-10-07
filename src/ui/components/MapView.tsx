@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LAND, MOUNTAINS, REGION_LABELS, MAP_W, MAP_H } from '../../data/geography'
+import { COAST_LAND, COAST_WATER, MOUNTAINS, REGION_LABELS, MAP_W, MAP_H } from '../../data/geography'
 import type { Frame } from '../../sim/api/views'
 import { useNav } from '../ctx'
 
@@ -7,9 +7,20 @@ export interface PlaceDot { id: number; key: string; name: string; x: number; y:
 
 interface Props { places: PlaceDot[]; frame: Frame | null }
 
-/** Deterministic wobble so coastlines look drawn, not compass-made. */
-function wob(seed: number, a: number) {
-  return Math.sin(a * 3 + seed) * 0.06 + Math.sin(a * 7 + seed * 1.7) * 0.035 + Math.sin(a * 13 + seed * 0.3) * 0.018
+/** The traced coastlines as paths in map tiles, built once. */
+let PATHS: { land: Path2D; water: Path2D } | null = null
+function paths() {
+  if (PATHS) return PATHS
+  const ring = (path: Path2D, r: number[]) => {
+    path.moveTo(r[0], r[1])
+    for (let i = 2; i < r.length; i += 2) path.lineTo(r[i], r[i + 1])
+    path.closePath()
+  }
+  const land = new Path2D(), water = new Path2D()
+  for (const r of COAST_LAND) ring(land, r)
+  for (const r of COAST_WATER) ring(water, r)
+  PATHS = { land, water }
+  return PATHS
 }
 
 function css(name: string): string {
@@ -67,28 +78,27 @@ export function MapView({ places, frame }: Props) {
       const W = r.width, H = r.height
       const X = (x: number) => (x - cx) * s + W / 2
       const Y = (y: number) => (y - cy) * s + H / 2
-      const water = css('--water'), deep = css('--water-deep'), land = css('--land'), edge = css('--land-edge'), line = css('--land-line'), text = css('--map-text'), seaText = css('--map-sea-text'), beyond = css('--beyond')
+      const water = css('--water'), deep = css('--water-deep'), shallow = css('--water-shallow'), land = css('--land'), edge = css('--land-edge'), line = css('--land-line'), text = css('--map-text'), seaText = css('--map-sea-text'), beyond = css('--beyond')
       g.fillStyle = water
       g.fillRect(0, 0, W, H)
       // The lake's rim: past it, the Dark Continent.
       g.fillStyle = deep
-      for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(X(MAP_W / 2), Y(MAP_H / 2), (MAP_W / 2 + 4 + i * 6) * s, 0, Math.PI * 2); g.globalAlpha = 0.18; g.fill() }
-      g.globalAlpha = 1
-      // Coasts: an outline pass, then the land on top so only outer edges show.
-      const blob = (bx: number, by: number, br: number, seed: number, grow: number) => {
-        g.beginPath()
-        for (let k = 0; k <= 40; k++) {
-          const a = (k / 40) * Math.PI * 2
-          const rr = (br + grow) * (1 + wob(seed, a))
-          const px = X(bx + Math.cos(a) * rr), py = Y(by + Math.sin(a) * rr)
-          if (k === 0) g.moveTo(px, py); else g.lineTo(px, py)
-        }
-        g.closePath()
+      for (let i = 0; i < 6; i++) {
+        g.beginPath(); g.ellipse(X(MAP_W / 2), Y(MAP_H / 2), (MAP_W / 2 + 6 + i * 6) * s, (MAP_H / 2 + 6 + i * 6) * s, 0, 0, Math.PI * 2)
+        g.globalAlpha = 0.16; g.fill()
       }
-      let seed = 1
-      for (const lm of LAND) for (const [bx, by, br] of lm.b) { blob(bx, by, br, seed++, 0.35); g.fillStyle = lm.key === 'dc' ? beyond : edge; g.fill() }
-      seed = 1
-      for (const lm of LAND) for (const [bx, by, br] of lm.b) { blob(bx, by, br, seed++, 0); g.fillStyle = lm.key === 'dc' ? beyond : land; g.fill() }
+      g.globalAlpha = 1
+      // Coasts, traced from the official map: a pale shallows halo, the land, its lakes, then the inked shore.
+      const { land: LP, water: WP } = paths()
+      g.save()
+      g.setTransform(dpr * s, 0, 0, dpr * s, dpr * (W / 2 - cx * s), dpr * (H / 2 - cy * s))
+      g.lineJoin = 'round'
+      g.strokeStyle = shallow; g.globalAlpha = 0.55; g.lineWidth = 7 / s; g.stroke(LP)
+      g.globalAlpha = 1
+      g.fillStyle = land; g.fill(LP)
+      g.fillStyle = water; g.fill(WP)
+      g.strokeStyle = edge; g.lineWidth = Math.max(1, Math.min(2.2, s / 8)) / s; g.stroke(LP); g.stroke(WP)
+      g.restore()
       // Mountains as little ridges.
       g.strokeStyle = line
       g.lineWidth = 1.2
@@ -126,7 +136,11 @@ export function MapView({ places, frame }: Props) {
           g.beginPath(); g.moveTo(px - k, py - k); g.lineTo(px + k, py + k); g.moveTo(px + k, py - k); g.lineTo(px - k, py + k); g.stroke()
         }
       }
-      // Places.
+      // Places: dots first, then names, biggest first, each tried right, left, above and below,
+      // and dropped if it would cover a name already drawn. Zooming in makes room.
+      const boxes: [number, number, number, number][] = []
+      const free = (b: [number, number, number, number]) => b[0] >= 0 && b[2] <= W && b[1] >= 0 && b[3] <= H && !boxes.some((o) => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1])
+      const named: { p: PlaceDot; px: number; py: number; city: boolean }[] = []
       for (const p of places) {
         if (p.hidden && !p.beyond && p.kind !== 'ship') continue
         const px = X(p.x), py = Y(p.y)
@@ -141,11 +155,26 @@ export function MapView({ places, frame }: Props) {
         }
         g.fillStyle = city ? text : edge
         g.beginPath(); g.arc(px, py, city ? 3.2 : 2.4, 0, Math.PI * 2); g.fill()
-        if (s > 5 || city) {
-          g.fillStyle = text; g.font = `${city ? 600 : 500} ${city ? 11 : 10}px Inter, system-ui, sans-serif`; g.textAlign = 'left'
-          g.fillText(p.name, px + 6, py + 3.5)
+        boxes.push([px - 4, py - 4, px + 4, py + 4])
+        if (s > 5 || city) named.push({ p, px, py, city })
+      }
+      named.sort((a, b) => Number(b.city) - Number(a.city) || Number(a.p.kind === 'ship') - Number(b.p.kind === 'ship') || b.p.pop - a.p.pop)
+      g.textBaseline = 'middle'
+      for (const { p, px, py, city } of named) {
+        g.font = `${city ? 600 : 500} ${city ? 11 : 10}px Inter, system-ui, sans-serif`
+        const tw = g.measureText(p.name).width, th = city ? 13 : 12
+        const tries: [number, number, CanvasTextAlign][] = [[px + 6, py, 'left'], [px - 6, py, 'right'], [px, py - 10, 'center'], [px, py + 11, 'center']]
+        for (const [tx, ty, al] of tries) {
+          const x0 = al === 'left' ? tx : al === 'right' ? tx - tw : tx - tw / 2
+          const b: [number, number, number, number] = [x0 - 1, ty - th / 2, x0 + tw + 1, ty + th / 2]
+          if (!free(b)) continue
+          boxes.push(b)
+          g.fillStyle = text; g.textAlign = al
+          g.fillText(p.name, tx, ty)
+          break
         }
       }
+      g.textBaseline = 'alphabetic'
       // People.
       if (frame) {
         for (const d of frame.dots) {

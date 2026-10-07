@@ -13,7 +13,9 @@
     "test": "vitest run",
     "sim": "tsx scripts/simulate.ts",
     "balance": "tsx scripts/balance.ts",
-    "import:archive": "node scripts/import-archive.mjs"
+    "import:archive": "node scripts/import-archive.mjs ../v0-nen-archive-website",
+    "smoke": "npm run build:single && node scripts/smoke.mjs .",
+    "artifact": "npm run build:single && node scripts/artifact.mjs"
   },
   "dependencies": {
     "react": "19.2.8",

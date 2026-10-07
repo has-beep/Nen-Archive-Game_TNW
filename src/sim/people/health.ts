@@ -199,6 +199,8 @@ export function bodyTick(w: World, p: Person): string | null {
   if (p.nen.awake) p.nen.aura = Math.min(1, p.nen.aura + (resting ? 0.5 : 0.3) + p.nen.tech.zetsu / 500)
   // Timed conditions expire
   p.conds = p.conds.filter((c) => c.until > w.t || c.until < 0)
+  // A body that has lost aura or strength cannot hold more than it now can.
+  if (p.hp > hm) p.hp = hm
   return null
 }
 

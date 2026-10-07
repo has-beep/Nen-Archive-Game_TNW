@@ -144,7 +144,15 @@ export function think(w: World, p: Person, focus: boolean) {
   if (deficit(p, 'adventure') > 0.3 && !p.flags.confined) {
     const cand = nearby(w, p.loc).filter((x) => (!x.hidden || p.home === x.id) && x.hazard < 0.3)
     const dest = cand[Math.min(cand.length - 1, Math.floor(r.next() * r.next() * cand.length))]
-    if (dest) opts.push(opt('travel', (deficit(p, 'adventure') * 1.1 + f.curiosity / 400) * roam, `Travelling to ${dest.name}`, { place: dest.id }))
+    const settled = /civilian|merchant|farmer|fisher|doctor|teacher|butler/.test(p.role) ? 0.45 : 1
+    if (dest) opts.push(opt('travel', (deficit(p, 'adventure') * 1.1 + f.curiosity / 400) * roam * settled, `Travelling to ${dest.name}`, { place: dest.id }))
+  }
+
+  // Home. Most people who leave it mean to come back; the rooted most of all.
+  const home = p.home != null ? w.places[p.home] : null
+  if (home && home.id !== p.loc && !p.flags.confined && !p.flags.castaway && home.hazard < 0.3 && home.kind !== 'beyond' && !home.features.includes('game')) {
+    const rooted = /civilian|merchant|farmer|fisher|doctor|teacher|butler|politician/.test(p.role) ? 0.55 : 0.12
+    opts.push(opt('travel', rooted + deficit(p, 'family') * 0.6 + (100 - f.curiosity) / 400 - deficit(p, 'adventure') * 0.5, `Going home to ${home.name}`, { place: home.id }))
   }
 
   // Profession.

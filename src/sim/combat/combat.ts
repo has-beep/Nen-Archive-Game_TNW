@@ -620,6 +620,10 @@ function hatsuScore(ctx: Ctx, f: F, h: Hatsu, tgt: F): number {
   if (hasCondK(h, 'target_only')) s += 3
   // A trick already shown is a trick the other side is ready for.
   s -= 0.7 * (f.used[h.id] || 0)
+  // Nobody sensible stands still to charge with an enemy at arm's length.
+  if ((hasCondK(h, 'charge') || hasCondK(h, 'stillness')) && tgt.bound <= 0 && tgt.stun <= 0 && dist(f, tgt) < MELEE + 4) s -= Math.max(0, Math.min(3, (speedOf(tgt) / Math.max(1, speedOf(f)) - 0.85) * 10))
+  // Pain returned is nothing without pain to return.
+  if (h.kind === 'sun') s += Math.min(3, f.taken / f.hpMax * 5) - 1.5
   // Desperation, or a fighter who simply loves their ability.
   if (hp < 0.4) s += 1
   return s * (0.6 + ctx.r.next() * 0.8) * (0.7 + hatsuPower(ctx.w, f.p!, h) * 0.3)
@@ -767,6 +771,8 @@ function useHatsu(ctx: Ctx, f: F, h: Hatsu, tgt: F, charged: boolean) {
         if (!ranged && dist(f, tgt) > MELEE + 1.5) { say(`${f.token} lunges with ${quote(h)} and cannot reach ${tgt.token}.`, 0.15, 'miss'); break }
         let aura = 1
         if (hasCondK(h, 'aura_all')) { aura = 1 + f.aura / Math.max(1, f.auraMax) * 2; f.aura = 0 }
+        // Pain returned (Rising Sun): it is only as strong as the damage already taken.
+        if (h.kind === 'sun') { aura *= Math.max(0.3, Math.min(1.25, f.taken / (f.hpMax * 0.5))); f.taken = 0 }
         const targets = area ? enemies(ctx, f).filter((g) => dist(g, tgt) < 12).slice(0, 8) : [tgt]
         const parts: string[] = []
         for (const g of targets) {

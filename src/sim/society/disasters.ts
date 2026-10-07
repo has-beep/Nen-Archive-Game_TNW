@@ -293,14 +293,19 @@ export function strikeDisaster(w: World, pl: Place, kind: DisasterKind, sev: num
   return ev
 }
 
+const MONSTERS = new Set<HazardKind>(['ants', 'beast', 'frenzy', 'gas', 'vanishing'])
+
 /** Who drops everything to help. Doctors, soldiers, the kind, and Hunters
  *  for whom this is the job. */
 export function callForHelp(w: World, pl: Place, ev: Id, sev: number) {
   const r = rng(w)
   const hs = pl.hazards || []
   const roles = new Set(hs.flatMap((h) => HAZARDS[h.k].helpers).concat(['doctor']))
+  // Where something is hunting people, only those who can fight it answer.
+  const monsters = hs.some((h) => MONSTERS.has(h.k))
   const cands = alive(w).filter((p) => p.species === 'human' && !p.trip && isFree(p) && p.loc !== pl.id && !p.plan && w.places[p.loc].kind !== 'beyond'
-    && ((roles.has(p.role) && (p.facets.empathy > 45 || p.role === 'soldier')) || (p.license && p.facets.empathy > 72) || p.dreams.some((d) => d.k === 'doctor' || d.k === 'protect' && !d.target)))
+    && (!monsters || (p.nen.awake && p.nen.lvl >= 45))
+    && ((roles.has(p.role) && (p.facets.empathy > 45 || p.role === 'soldier')) || (p.license && p.facets.empathy > 72) || p.dreams.some((d) => d.k === 'doctor' || (d.k === 'protect' && d.target == null))))
   const near = cands.map((p) => ({ p, d: dist2(w.places[p.loc], pl) - (w.places[p.loc].nation === pl.nation ? 400 : 0) })).sort((a, b) => a.d - b.d)
   const n = Math.round(2 + sev * 8)
   let sent = 0

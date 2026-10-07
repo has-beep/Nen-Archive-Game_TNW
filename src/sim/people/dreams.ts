@@ -226,8 +226,11 @@ const HANDLERS: Partial<Record<DreamKind, Handler>> = {
       const danger = t.plan?.k === 'hunt' || alive(w).some((q) => q.plan?.k === 'hunt' && q.plan.target === t.id)
       return [{ k: 'guard', u: (danger ? 2.6 : 0.7) * pri(d), why: `Watching over ${t.name}`, with: t.id, days: 2 }]
     }
+    // Someone far weaker than the one they love cannot protect them by
+    // following them into danger. They wait, and worry (Mito, with Gon).
+    const helpless = power(p) < power(t) * 0.6 && !p.orgs.some((m) => t.orgs.some((n) => n.org === m.org))
     const wi = whereIs(w, p, t)
-    if (wi) return [go(w, p, wi.place, 1.2 * pri(d), `Going to ${t.name}`)]
+    if (wi) return [go(w, p, wi.place, (helpless ? 0.12 : 1.2) * pri(d), `Going to ${t.name}`)]
     return []
   },
 

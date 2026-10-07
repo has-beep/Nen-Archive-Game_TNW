@@ -11,7 +11,7 @@ import { P, L, log } from '../history'
 import type { Person, World } from '../types'
 import { hash2 } from '../rng'
 import { age, isAdult, makePerson, newNen, facetsFrom, valuesFrom } from './person'
-import { change, hasBond, setBond } from './relations'
+import { change, firstBonded, hasBond, setBond } from './relations'
 import { remember } from './memory'
 import { rng, registerKey, touch } from '../world'
 import { compatibility, randomOrientation } from './traits'
@@ -35,8 +35,7 @@ function chemistry(a: Person, b: Person): number {
 }
 
 function partnerOf(w: World, p: Person): Person | null {
-  for (const id in p.rel) if (hasBond(p.rel[+id], 'spouse') || hasBond(p.rel[+id], 'lover')) { const q = w.people[+id]; if (q?.alive) return q }
-  return null
+  return firstBonded(w, p, 'spouse') || firstBonded(w, p, 'lover')
 }
 
 export function romanceTick(w: World, here: Person[]) {
@@ -44,12 +43,11 @@ export function romanceTick(w: World, here: Person[]) {
   const r = rng(w)
   for (const a of here) {
     if (!isAdult(w, a) || a.facets.romantic < 15 || a.conds.length) continue
-    const partner = partnerOf(w, a)
     // Courtship.
+    const partner = partnerOf(w, a)
     for (const b of here) {
-      if (b === a || !attracted(w, a, b)) continue
       const ra = a.rel[b.id]
-      if (!ra || ra.fam < 15) continue
+      if (!ra || ra.fam < 15 || b === a || !attracted(w, a, b)) continue
       const chem = chemistry(a, b)
       if (chem < 0.45) continue
       const grow = (chem - 0.4) * 1.6 * (a.facets.romantic / 60) * (0.4 + compatibility(a, b)) * (partner && partner !== b ? 0.1 : 1)

@@ -58,6 +58,11 @@ export function contractsTick(w: World) {
 /** Open contracts this person could take, given who they are. */
 export function contractsFor(w: World, p: Person): Contract[] {
   const out: Contract[] = []
+  // People who run things do not take jobs off the board.
+  if (['chairman', 'prince', 'royal', 'ruler', 'don', 'politician', 'child'].includes(p.role) || w.orgs.some((o) => o.leader === p.id)) return out
+  // Zoldycks take work through the family; the Troupe takes what it wants;
+  // the Ants do not read notice boards.
+  if (p.orgs.some((m) => ['zoldyck', 'troupe', 'ants', 'bombers'].includes(w.orgs[m.org].key))) return out
   for (const c of w.contracts) {
     if (c.status !== 'open') continue
     const t = c.target != null ? w.people[c.target] : null

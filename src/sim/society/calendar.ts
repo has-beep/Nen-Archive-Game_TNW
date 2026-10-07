@@ -12,7 +12,8 @@ import { L, O, P, log } from '../history'
 import type { Id, OrgOp, Person, World } from '../types'
 import { alive, at, members, orgK, personK, placeK, rng, touch } from '../world'
 import { age, hpMax, power, inOrg } from '../people/person'
-import { change, setBond } from '../people/relations'
+import { compatibility } from '../people/traits'
+import { change, checkBonds, hasBond, setBond } from '../people/relations'
 import { remember } from '../people/memory'
 import { addWound } from '../people/health'
 import { joinOrg } from './orgs'
@@ -159,21 +160,16 @@ function runPhase(w: World, ex: ExamState, ph: (typeof PHASES)[number], i: numbe
   if (ph.k === 'hunt' || ph.k === 'tower') {
     const wolves = live.filter((p) => p.facets.cruelty > 65 || p.dreams.some((d) => d.k === 'chaos'))
     for (const wolf of wolves.slice(0, 3)) {
-      const prey = live.filter((q) => q !== wolf && !died.includes(q) && (wolf.rel[q.id]?.aff ?? 0) < 30)
+      const prey = live.filter((q) => q !== wolf && !died.includes(q) && (wolf.rel[q.id]?.aff ?? 0) < 30 && !hasBond(wolf.rel[q.id], 'friend') && !hasBond(q.rel[wolf.id], 'friend'))
       if (!prey.length || !r.chance(0.5)) continue
       const v = r.pick(prey)
       const out = fight(w, { a: [wolf], b: [v], intentA: wolf.facets.cruelty > 80 ? 'kill' : 'duel', place: ex.place, why: `during the Hunter Exam's ${ph.n}`, cause: ex.ev })
       for (const d of out.dead) died.push(d)
     }
-    // Candidates who survive something together become close.
-    const groups = r.shuffle(live.slice()).filter((p) => !died.includes(p))
-    for (let k = 0; k + 1 < groups.length && k < 10; k += 2) {
-      const a = groups[k], b = groups[k + 1]
-      if ((a.rel[b.id]?.aff ?? 0) < -20) continue
-      change(w, a, b, { aff: 16, trust: 14, fam: 18, resp: 6 })
-      change(w, b, a, { aff: 16, trust: 14, fam: 18, resp: 6 })
-    }
   }
+  // Candidates who get through something together become close, and people
+  // find their own: kids find the other kids, the like-minded find each other.
+  examGroups(w, live.filter((p) => !died.includes(p)), ph.k === 'run' ? 0.6 : 1)
   for (const x of ranked.slice(ranked.length - cut)) {
     if (died.includes(x.p)) continue
     failed.push(x.p)
@@ -215,7 +211,7 @@ function finishExam(w: World, ex: ExamState) {
     const bad = live.find((p) => p.flags.illumiNeedle && live.some((q) => q.key === 'illumi_zoldyck'))
     if (bad && r.chance(0.5)) {
       flunk = bad
-      const victim = live.filter((q) => q !== bad && q.key !== 'illumi_zoldyck' && (bad.rel[q.id]?.aff ?? 0) < 30).sort((a, b) => power(a) - power(b))[0]
+      const victim = live.filter((q) => q !== bad && q.key !== 'illumi_zoldyck' && (bad.rel[q.id]?.aff ?? 0) < 15 && !hasBond(bad.rel[q.id], 'friend')).sort((a, b) => power(a) - power(b))[0]
       if (victim) {
         const ev = log(w, { type: 'exam', imp: 4, who: [bad.id, victim.id], at: ex.place, cause: ex.ev, text: `In the final, ${P(bad)} walks into someone else's match and kills ${P(victim)}. Nobody saw it coming, least of all ${P(bad)}. Disqualified.` })
         kill(w, victim, { cause: 'the final of the Hunter Exam', by: bad, ev })
@@ -228,6 +224,9 @@ function finishExam(w: World, ex: ExamState) {
     p.fame += 6
     if (['drifter', 'civilian', 'student', 'fighter', 'child'].includes(p.role)) p.role = 'rookie'
     for (const d of p.dreams) if (d.k === 'hunter') d.done = w.t
+    // The exam's hidden half: a Hunter who cannot use Nen is not a Hunter
+    // yet. Nobody says so out loud.
+    if (!p.nen.awake && p.species === 'human' && !p.dreams.some((d) => d.k === 'master' && !d.done)) p.dreams.push({ k: 'master', pri: 78, prog: 0, since: w.t, tag: 'ura' })
     if (!inOrg(p, ha.id) && p.facets.loyalty > 25 && !p.orgs.some((m) => ['troupe', 'zoldyck'].includes(w.orgs[m.org].key))) joinOrg(w, p, ha, 0, { quiet: true })
     remember(w, p, { k: 'license', val: 60, str: 70, text: `Passed the ${ex.n}th Hunter Exam.` })
     // Article 2: a new Hunter who cannot use Nen goes looking for a teacher.
@@ -362,4 +361,27 @@ function raidDay(w: World, orgId: Id, op: OrgOp) {
   endStory(w, `raid-${dateOf(w.epoch, w.t).y}`, out.ev, won ? 'The vaults were emptied.' : 'The raid failed.')
   for (const p of raiders) if (p.alive && p.plan?.k === 'go') p.plan = null
   void setBond
+}
+
+/** Who sticks together during an exam phase. Each sociable candidate pulls in
+ *  the two or three others they get on with best; everyone in a group warms
+ *  to everyone else in it. */
+function examGroups(w: World, live: Person[], scale: number) {
+  const r = rng(w)
+  const free = new Set(live)
+  const order = live.slice().sort((a, b) => b.facets.sociability + b.facets.curiosity - a.facets.sociability - a.facets.curiosity)
+  const pull = (a: Person, b: Person) => {
+    const aa = age(w, a), ab = age(w, b)
+    const kids = aa < 18 && ab < 18 ? 0.7 - Math.abs(aa - ab) * 0.08 : 0
+    return compatibility(a, b) + kids + (a.rel[b.id]?.aff ?? 0) / 120 + (b.facets.empathy - 50) / 300 + r.next() * 0.35
+  }
+  for (const a of order) {
+    if (!free.has(a) || a.facets.sociability < 25 && r.chance(0.6)) continue
+    free.delete(a)
+    const picks = [...free].filter((b) => (a.rel[b.id]?.aff ?? 0) > -20).map((b) => ({ b, s: pull(a, b) })).filter((x) => x.s > 0.25).sort((x, y) => y.s - x.s).slice(0, 1 + r.int(3))
+    const g = [a, ...picks.map((x) => x.b)]
+    for (const b of g) free.delete(b)
+    for (const x of g) for (const y of g) if (x !== y) change(w, x, y, { aff: 13 * scale, trust: 10 * scale, fam: 15 * scale, resp: 5 * scale })
+    for (let i = 0; i < g.length; i++) for (let j = i + 1; j < g.length; j++) checkBonds(w, g[i], g[j])
+  }
 }

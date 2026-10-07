@@ -134,3 +134,39 @@ import { relOrNew } from '../people/person'
 import { setBond } from '../people/relations'
 import { makeItem } from '../society/economy'
 const LINK = { personK, relOrNew, setBond, makeItem }
+
+/** Households the per-character data does not spell out pair by pair:
+ *  every child of a house is a sibling of every other, and a child of each
+ *  listed parent. Feelings come from the character data; this only sets the
+ *  facts, so siblings never drift into being "best friends". */
+const FAMILIES: { parents: string[]; children: string[]; spouses?: boolean }[] = [
+  { parents: ['maha_zoldyck'], children: ['zeno_zoldyck'] },
+  { parents: ['zeno_zoldyck'], children: ['silva_zoldyck'] },
+  { parents: ['silva_zoldyck', 'kikyo_zoldyck'], spouses: true, children: ['illumi_zoldyck', 'milluki_zoldyck', 'killua_zoldyck', 'alluka_zoldyck', 'kalluto_zoldyck'] },
+  { parents: ['nasubi_hui_guo_rou'], children: ['benjamin_hui_guo_rou', 'camilla_hui_guo_rou', 'zhang_lei_hui_guo_rou', 'tserriednich_hui_guo_rou', 'tubeppa_hui_guo_rou', 'tyson_hui_guo_rou', 'luzurus_hui_guo_rou', 'sale_sale_hui_guo_rou', 'halkenburg_hui_guo_rou', 'kacho_hui_guo_rou', 'fugetsu_hui_guo_rou', 'momoze_hui_guo_rou', 'marayam_hui_guo_rou'] },
+  { parents: ['ging_freecss'], children: ['gon_freecss'] },
+  { parents: ['abe_freecss'], children: ['mito_freecss'] },
+  { parents: ['netero'], children: ['beyond_netero'] },
+  { parents: ['light_nostrade'], children: ['neon_nostrade'] },
+  { parents: [], children: ['eta', 'elena'] },
+]
+
+export function familyTies(w: World) {
+  const get = (k: string) => LINK.personK(w, k)
+  for (const f of FAMILIES) {
+    const kids = f.children.map(get).filter((p): p is Person => !!p)
+    const pars = f.parents.map(get).filter((p): p is Person => !!p)
+    for (const c of kids) for (const p of pars) {
+      LINK.setBond(w, c, p, 'parent')
+      for (const [a, b] of [[c, p], [p, c]] as const) { const r = LINK.relOrNew(w, a, b.id); r.fam = Math.max(r.fam, 80) }
+    }
+    for (let i = 0; i < kids.length; i++) for (let j = i + 1; j < kids.length; j++) {
+      LINK.setBond(w, kids[i], kids[j], 'sibling')
+      for (const [a, b] of [[kids[i], kids[j]], [kids[j], kids[i]]] as const) { const r = LINK.relOrNew(w, a, b.id); r.fam = Math.max(r.fam, 60) }
+    }
+    if (f.spouses && pars.length === 2) LINK.setBond(w, pars[0], pars[1], 'spouse')
+  }
+  // The Oito line: the eighth queen and her infant are Nasubi's too.
+  const oito = get('oito_hui_guo_rou'), nasubi = get('nasubi_hui_guo_rou')
+  if (oito && nasubi) LINK.setBond(w, oito, nasubi, 'spouse')
+}

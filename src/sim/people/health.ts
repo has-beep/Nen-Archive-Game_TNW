@@ -9,7 +9,7 @@
 import { BODY_PARTS, PART_INFO, type BodyPart } from '../constants'
 import { L, P, log } from '../history'
 import type { Id, Person, Wound, World } from '../types'
-import { hpMax, nenUsable, woundMods } from './person'
+import { hpMax, isFree, nenUsable, woundMods } from './person'
 import { at, rng } from '../world'
 import { change } from './relations'
 
@@ -127,16 +127,27 @@ export function bodyTick(w: World, p: Person): string | null {
       }
     }
   }
-  // Bleeding
+  // Bleeding. A conscious person presses on the wound; anyone nearby who
+  // does not want them dead helps. Bleeding out is for the alone and the
+  // abandoned.
   let bleeding = false
+  const awake = !p.conds.some((c) => c.k === 'unconscious' && c.until > w.t)
+  let aid = (awake ? 0.25 + p.skills.medicine / 200 : 0) + (nenUsable(p) ? 0.15 : 0)
+  if (p.wounds.some((x) => x.bleed && !x.treated)) {
+    for (const q of at(w, p.loc)) {
+      if (q === p || !isFree(q) || (q.rel[p.id]?.aff ?? 0) < -10) continue
+      aid = Math.max(aid, 0.45 + q.skills.medicine / 150)
+      break
+    }
+  }
   for (const x of p.wounds) {
     if (x.bleed && !x.treated && x.left > 0) {
       bleeding = true
-      if (r.chance(nenUsable(p) ? 0.35 : 0.2)) x.bleed = false
+      if (r.chance(Math.min(0.9, aid))) x.bleed = false
     }
   }
   if (bleeding) {
-    p.hp -= hm * 0.06
+    p.hp -= hm * 0.05
     if (p.hp <= 0) return 'bleeding'
   }
   // Poison and illness

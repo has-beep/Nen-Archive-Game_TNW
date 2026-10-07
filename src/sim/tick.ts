@@ -77,11 +77,13 @@ function dayFor(w: World, p: Person, focus: boolean, weekly: boolean) {
   arrive(w, p)
   const cause = bodyTick(w, p)
   if (cause) {
-    const by = p.wounds.find((x) => x.by != null && x.left > 0)?.by
+    const by = p.wounds.find((x) => x.by != null && x.by !== p.id && x.left > 0)?.by
     kill(w, p, { cause: cause === 'bleeding' ? 'bleeding to death' : cause, by: by != null ? w.people[by] : null, how: cause === 'bleeding' ? `{p${p.id}} bleeds to death${by != null ? `, never treated after the fight with {p${by}}` : ''}.` : undefined })
     return
   }
-  needsTick(w, p)
+  // Needs drift slowly; outside the focus they are settled every other day.
+  if (focus) needsTick(w, p)
+  else if ((w.t + p.id) % 2 === 0) needsTick(w, p, 2)
   if (p.sex === 'f') birthCheck(w, p)
   if (weekly) { growUp(w, p); relationsWeekly(w, p) }
   if (p.trip) return

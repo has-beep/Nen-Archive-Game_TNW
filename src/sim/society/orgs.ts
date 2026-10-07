@@ -277,7 +277,7 @@ function haWeekly(w: World, org: Org) {
   const zs = members(w, zod.id)
   const chair = w.people[org.leader]
   if (zs.length < 12 && chair?.alive && r.chance(0.04)) {
-    const cands = members(w, org.id).filter((m) => !inOrg(m, zod.id) && m.license && m.license.stars >= 1 && m.nen.lvl > 55 && age(w, m) >= 20)
+    const cands = members(w, org.id).filter((m) => m !== chair && !inOrg(m, zod.id) && m.license && m.license.stars >= 1 && m.nen.lvl > 55 && age(w, m) >= 20)
     if (cands.length) {
       const c = cands.sort((a, b) => b.fame + power(b) - a.fame - power(a))[0]
       const signs = ['Rat', 'Ox', 'Tiger', 'Rabbit', 'Dragon', 'Snake', 'Horse', 'Sheep', 'Monkey', 'Rooster', 'Dog', 'Boar']

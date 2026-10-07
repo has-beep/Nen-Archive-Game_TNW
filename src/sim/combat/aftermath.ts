@@ -53,7 +53,8 @@ export function fight(w: World, o: FightOpts): FightOutcome {
   for (const f of F) {
     if (!f.p) continue
     const p = f.p
-    p.hp = Math.max(f.outState === 'down' ? 0 : 1, Math.round(f.hp))
+    p.hp = Math.max(f.outState === 'down' ? hpMax(p) * 0.04 : 1, Math.round(f.hp))
+    if (f.outState === 'down') p.conds.push({ k: 'unconscious', until: w.t + 1 + (f.hp < 0 ? 2 : 0) })
     p.nen.aura = f.auraMax > 0 ? Math.max(0, f.aura / f.auraMax) : p.nen.aura
     p.stam = Math.max(0, p.stam - 25 - res.exchanges)
     p.lastFight = w.t
@@ -85,7 +86,9 @@ export function fight(w: World, o: FightOpts): FightOutcome {
         continue
       }
       let pk = { duel: 0.05, kill: 0.88, war: 0.55, capture: 0.06, defend: 0.3, escape: 0.05, arena: 0, spar: 0 }[intent] * lethal
-      if (f.hp <= -f.hpMax * 0.5) pk = Math.max(pk, 0.5 * lethal)
+      // Deep damage can kill whatever anyone meant, but a duel is fought to
+      // be won, not to finish someone, and the winner usually stops.
+      if (f.hp <= -f.hpMax * 0.5) pk = Math.max(pk, (intent === 'duel' ? 0.16 : 0.5) * lethal)
       if (f.outState === 'yield') pk *= 0.5
       if (killer && mercy(w, killer, p, intent)) pk *= 0.08
       if (killer && killer.facets.cruelty > 70) pk = Math.min(0.98, pk * 1.3)
@@ -255,8 +258,9 @@ function mercy(w: World, winner: Person, loser: Person, intent: string): boolean
   const r = rng(w)
   const rel = winner.rel[loser.id]
   if (rel && (rel.aff > 45 || hasBond(rel, 'sibling') || hasBond(rel, 'friend'))) return true
-  // Hisoka: unripe fruit is left to ripen.
+  // Hisoka: unripe fruit is left to ripen, and a good fight is worth having again.
   if (winner.facets.cruelty > 70 && winner.facets.whimsy > 80 && loser.nen.pot > 1.1 && loser.nen.lvl < winner.nen.lvl * 0.7) return true
+  if (intent === 'duel' && winner.dreams.some((d) => d.k === 'chaos' && !d.done) && loser.nen.lvl > winner.nen.lvl * 0.75) return r.chance(0.7)
   // A Zoldyck only kills the contract.
   if (winner.orgs.some((m) => w.orgs[m.org]?.key === 'zoldyck') && !winner.plan?.data?.contract) return r.chance(0.85)
   if (intent !== 'kill' && intent !== 'war' && winner.facets.empathy > 55) return true

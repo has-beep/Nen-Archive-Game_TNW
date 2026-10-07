@@ -91,8 +91,7 @@ function localBout(w: World, p: Person) {
   const fl = floor(p)
   const lvl = fl >= 200 ? 45 + r.int(20) : 20 + fl / 5
   const opp = { name: fl >= 200 ? 'a 200th-floor fighter' : `a floor-${Math.max(1, fl)} fighter`, str: lvl, agi: lvl, tou: lvl, skill: lvl, weapon: 'fists', count: 1 }
-  const out = fight(w, { a: [p], b: [], extrasB: [opp], intentA: 'arena', place: placeK(w, 'arena').id, arena: true, why: 'in the ring' })
-  if (out.res.winner === 0) arenaResult(w, [p], [], out.ev)
-  else if (out.res.winner === 1) arenaResult(w, [], [p], out.ev)
+  // fight() settles floors and records itself, since this is an arena bout.
+  fight(w, { a: [p], b: [], extrasB: [opp], intentA: 'arena', place: placeK(w, 'arena').id, arena: true, why: 'in the ring' })
   void power; void L
 }

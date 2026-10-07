@@ -107,7 +107,7 @@ function jail(w: World, t: Person, by: Person) {
   t.loc = sw.id
   t.trip = undefined
   t.plan = null
-  touch(w)
+  touch(w, t)
   log(w, { type: 'crime', imp: t.major ? 3 : 2, who: [t.id, by.id], at: sw.id, text: `${P(by)} delivers ${P(t)} to the Hunter Association. ${P(t)} goes into the cells in ${L(sw)}.` })
   remember(w, t, { k: 'jailed', val: -45, str: 60, who: by.id, text: `${by.name} put me in a cell.` })
   void power

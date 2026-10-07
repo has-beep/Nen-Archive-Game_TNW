@@ -16,7 +16,7 @@ import type { Laws, Nation, Org, Person, Place, World } from '../types'
 import { Rng } from '../rng'
 import { epochOf, tickOf } from '../time'
 import { alive, members, nationK, orgK, personK, placeK, reindex, rng, touch } from '../world'
-import { buildCanon, linkCanon } from './canon'
+import { buildCanon, linkCanon, familyTies } from './canon'
 import { spawn } from './spawn'
 import { change, setBond, isKin } from '../people/relations'
 import { develop } from '../nen/nen'
@@ -92,6 +92,7 @@ export function createWorld(o: WorldOptions): World {
   const seen = new Set<string>()
   for (const d of canon) { if (seen.has(d.key)) continue; seen.add(d.key); buildCanon(w, d) }
   for (const p of w.people.slice()) linkCanon(w, p)
+  familyTies(w)
   // Leaders.
   const lead = (org: string, key: string) => { const p = personK(w, key); if (p) orgK(w, org).leader = p.id }
   lead('ha', 'netero'); lead('troupe', 'chrollo_lucilfer'); lead('zoldyck', 'silva_zoldyck'); lead('nostrade', 'light_nostrade')
@@ -101,7 +102,12 @@ export function createWorld(o: WorldOptions): World {
   kakin.ruler = personK(w, 'nasubi_hui_guo_rou')!.id
   eg.ruler = personK(w, 'ming_jol_ik')!.id
   // Special canon conditions.
-  const ging = personK(w, 'ging_freecss'); if (ging) ging.flags.elusive = 0.85
+  const ging = personK(w, 'ging_freecss'); if (ging) ging.flags.elusive = 0.97
+  // Greed Island has been running for twelve years. Some teams are close.
+  for (const [k, prog] of [['tsezguerra', 74], ['genthru', 76], ['goreinu', 40]] as const) {
+    const d = personK(w, k)?.dreams.find((x) => x.k === 'clear')
+    if (d) d.prog = prog
+  }
   const killua = personK(w, 'killua_zoldyck'); if (killua) killua.flags.illumiNeedle = 1
   const alluka = personK(w, 'alluka_zoldyck'); if (alluka) alluka.flags.confined = 1
   const hisoka = personK(w, 'hisoka_morow'); if (hisoka) { const m = hisoka.orgs.find((x) => w.orgs[x.org].key === 'troupe'); if (m) m.secret = false; hisoka.flags.fakeSpider = 1 }
@@ -210,7 +216,7 @@ function populate(w: World, r: Rng, n: number) {
   many(10, () => {
     const p = spawn(w, { role: 'gamer', place: P('greed'), lvl: [38, 62], age: [20, 45], bias: { greed: 10, curiosity: 10 } })
     p.flags.giAccess = 1
-    p.dreams.unshift({ k: 'clear', pri: 70, prog: r.int(30), since: 0 })
+    p.dreams.unshift({ k: 'clear', pri: 70, prog: 20 + r.int(50), since: 0 })
   })
   // Young people who want to be Hunters, everywhere.
   many(30, () => spawn(w, { role: r.pick(['drifter', 'student', 'civilian']), place: r.pick(w.places.filter((p) => p.kind !== 'beyond' && !p.features.includes('game'))).id, lvl: [0, 22], awake: r.chance(0.05), age: [13, 26], bias: { ambition: 12, curiosity: 12 } }))

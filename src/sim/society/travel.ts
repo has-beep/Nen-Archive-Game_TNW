@@ -58,7 +58,7 @@ export function travel(w: World, p: Person, to: Id, quiet = false): boolean {
   if (w.places[to].features.includes('game')) p.flags.giReturn = from
   p.trip = { from, to, t0: w.t, t1: w.t + rt.days, mode: rt.mode }
   p.loc = to
-  touch(w)
+  touch(w, p)
   if (!quiet && (p.owned || (p.major && rt.days >= 2))) {
     log(w, {
       type: 'move', imp: 0, who: [p.id], at: to,
@@ -77,7 +77,7 @@ export function arrive(w: World, p: Person) {
   if (!p.trip || w.t < p.trip.t1) return
   const tr = p.trip
   p.trip = undefined
-  touch(w)
+  touch(w, p)
   if (p.owned && tr.t1 - tr.t0 > 1) log(w, { type: 'arrive', imp: 0, who: [p.id], at: p.loc, text: `${P(p)} arrives in ${L(w.places[p.loc])}.` })
 }
 

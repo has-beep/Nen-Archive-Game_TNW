@@ -24,7 +24,32 @@ export function bondsOf(r: Rel | undefined): Bond[] {
   if (!r) return []
   return BONDS.filter((b) => (r.bonds & BIT[b]) !== 0)
 }
+/** The few people someone has any bond with, cached: most relationships
+ *  are just acquaintance, and scanning them all for a spouse or a teacher
+ *  was the slowest thing in the simulation. */
+const BL = new WeakMap<Person, Id[]>()
+export function bondList(p: Person): Id[] {
+  let l = BL.get(p)
+  if (!l) {
+    l = []
+    for (const id in p.rel) if (p.rel[id].bonds) l.push(+id)
+    BL.set(p, l)
+  }
+  return l
+}
+/** The first living person who is p's `bond` (for example: p's mentor). */
+export function firstBonded(w: World, p: Person, bond: Bond, pred?: (q: Person) => boolean): Person | null {
+  const bit = BIT[bond]
+  for (const id of bondList(p)) {
+    const r = p.rel[id]
+    if (!r || !(r.bonds & bit)) continue
+    const q = w.people[id]
+    if (q && q.alive && (!pred || pred(q))) return q
+  }
+  return null
+}
 export function setBond(w: World, a: Person, b: Person, bond: Bond, on = true) {
+  BL.delete(a); BL.delete(b)
   const ra = relOrNew(w, a, b.id), rb = relOrNew(w, b, a.id)
   const back = BOND_PAIR[bond]
   if (on) { ra.bonds |= BIT[bond]; rb.bonds |= BIT[back] }
@@ -147,16 +172,17 @@ export function checkBonds(w: World, a: Person, b: Person) {
   const ra = a.rel[b.id], rb = b.rel[a.id]
   if (!ra || !rb) return
   const big = a.major || b.major || a.owned || b.owned
-  const formal = hasBond(ra, 'master') || hasBond(ra, 'servant') || hasBond(ra, 'employer') || hasBond(ra, 'employee')
+  const formal = hasBond(ra, 'master') || hasBond(ra, 'servant') || hasBond(ra, 'employer') || hasBond(ra, 'employee') || rankGap(a, b)
   if (!hasBond(ra, 'friend') && !formal && !isKin(a, b.id) && !hasBond(ra, 'spouse') && ra.aff >= 42 && rb.aff >= 42 && ra.fam >= 30 && ra.trust >= 15 && rb.trust >= 15) {
     setBond(w, a, b, 'friend')
     log(w, { type: 'bond', imp: big ? 2 : 1, who: [a.id, b.id], at: a.loc, text: `${P(a)} and ${P(b)} become friends.` })
     remember(w, a, { k: 'friend', who: b.id, val: 30, str: 40, text: `Became friends with ${b.name}.` })
     remember(w, b, { k: 'friend', who: a.id, val: 30, str: 40, text: `Became friends with ${a.name}.` })
   }
-  if (hasBond(ra, 'friend') && !formal && !hasBond(ra, 'bestFriend') && !isKin(a, b.id) && ra.aff >= 78 && rb.aff >= 78 && ra.trust >= 60 && rb.trust >= 60 && ra.fam >= 60) {
+  // A best friend is rare: years of trust, or something survived together.
+  if (hasBond(ra, 'friend') && !formal && !hasBond(ra, 'bestFriend') && !isKin(a, b.id) && ra.aff >= 85 && rb.aff >= 85 && ra.trust >= 70 && rb.trust >= 70 && ra.fam >= 75 && rb.fam >= 75) {
     setBond(w, a, b, 'bestFriend')
-    log(w, { type: 'bond', imp: big ? 3 : 2, who: [a.id, b.id], at: a.loc, text: `${P(a)} and ${P(b)} are best friends now, the kind who would die for each other.` })
+    log(w, { type: 'bond', imp: (a.major && b.major) || a.owned || b.owned ? 3 : big ? 2 : 1, who: [a.id, b.id], at: a.loc, text: `${P(a)} and ${P(b)} are best friends now, the kind who would die for each other.` })
   }
   if (hasBond(ra, 'friend') && (ra.aff < 5 || rb.aff < 5)) {
     setBond(w, a, b, 'friend', false)
@@ -166,6 +192,13 @@ export function checkBonds(w: World, a: Person, b: Person) {
   if (!hasBond(ra, 'nemesis') && ra.aff <= -75 && a.facets.vengefulness > 60) {
     setBond(w, a, b, 'nemesis')
   }
+}
+
+const HIGH = new Set(['ruler', 'prince', 'royal', 'don', 'chairman'])
+const SERVING = new Set(['soldier', 'officer', 'butler', 'guard', 'mafioso', 'politician', 'spy'])
+/** A king and his guard can respect each other; they are not best friends. */
+function rankGap(a: Person, b: Person): boolean {
+  return (HIGH.has(a.role) && SERVING.has(b.role)) || (HIGH.has(b.role) && SERVING.has(a.role))
 }
 
 /** Relationships nobody tends fade; acquaintances are forgotten entirely, so

@@ -14,11 +14,11 @@
  */
 import { NEEDS, type Need } from '../constants'
 import { L, P, log } from '../history'
-import type { ActKind, Id, Person, World } from '../types'
+import type { ActKind, Id, Person, Place, World } from '../types'
 import { at, rng, placeK, members } from '../world'
 import { age, hpMax, isAdult, isFree, power, woundMods } from './person'
 import { moodTick, remember } from './memory'
-import { change, hasBond, interact, setBond, decayRelations } from './relations'
+import { bondList, change, firstBonded, hasBond, interact, setBond, decayRelations } from './relations'
 import { see } from './knowledge'
 import { needsCare, nearestCare, careAt } from './health'
 import { dreamOptions, type Option } from './dreams'
@@ -94,14 +94,25 @@ export function think(w: World, p: Person, focus: boolean) {
   if (hp > 0.5) opts.push(opt('train', trainU, mentor ? `Training under ${mentor.name}` : p.nen.awake ? 'Training Nen' : 'Training body and focus', { days: 3 + r.int(3), with: mentor?.id }))
 
   // Company, family, love.
-  const liked = here.filter((q) => (p.rel[q.id]?.aff ?? 0) > -15 && isFree(q))
-  if (liked.length) {
-    const best = liked.sort((a, b) => (p.rel[b.id]?.aff ?? 0) - (p.rel[a.id]?.aff ?? 0))[r.int(Math.min(3, liked.length))]
+  // The three people here they like best (one of them, at random), without
+  // sorting the whole room.
+  let b1: Person | null = null, b2: Person | null = null, b3: Person | null = null, a1 = -1e9, a2 = -1e9, a3 = -1e9
+  for (const q of here) {
+    const a = p.rel[q.id]?.aff ?? 0
+    if (a <= -15 || a <= a3 || !isFree(q)) continue
+    if (a > a1) { b3 = b2; a3 = a2; b2 = b1; a2 = a1; b1 = q; a1 = a }
+    else if (a > a2) { b3 = b2; a3 = a2; b2 = q; a2 = a }
+    else { b3 = q; a3 = a }
+  }
+  if (b1) {
+    const top = [b1, b2, b3].filter((x): x is Person => !!x)
+    const best = top[r.int(top.length)]
     opts.push(opt('social', deficit(p, 'social') * 1.7 + f.sociability / 220, `Spending time with ${best.name}`, { with: best.id, days: 1 + r.int(2) }))
-    const kin = liked.find((q) => hasBond(p.rel[q.id], 'parent') || hasBond(p.rel[q.id], 'child') || hasBond(p.rel[q.id], 'sibling') || hasBond(p.rel[q.id], 'spouse'))
+    const near = (q: Person) => q.loc === p.loc && !q.trip && isFree(q) && (p.rel[q.id]?.aff ?? 0) > -15
+    const kin = firstBonded(w, p, 'parent', near) || firstBonded(w, p, 'child', near) || firstBonded(w, p, 'sibling', near) || firstBonded(w, p, 'spouse', near)
     if (kin) opts.push(opt('family', deficit(p, 'family') * 1.8, `With family: ${kin.name}`, { with: kin.id, days: 2 }))
-    const love = liked.find((q) => hasBond(p.rel[q.id], 'lover') || hasBond(p.rel[q.id], 'spouse') || hasBond(p.rel[q.id], 'crush'))
-    if (love && isAdult(w, p) && w.laws.romance) opts.push(opt('romance', deficit(p, 'romance') * 2 + 0.2, `Time with ${love.name}`, { with: love.id, days: 1 }))
+    const love = isAdult(w, p) && w.laws.romance ? firstBonded(w, p, 'lover', near) || firstBonded(w, p, 'spouse', near) || firstBonded(w, p, 'crush', near) : null
+    if (love) opts.push(opt('romance', deficit(p, 'romance') * 2 + 0.2, `Time with ${love.name}`, { with: love.id, days: 1 }))
   }
   if (deficit(p, 'solitude') > 0.6) opts.push(opt('rest', deficit(p, 'solitude') * 1.2, 'Keeping to themselves', { days: 2 }))
 
@@ -112,7 +123,7 @@ export function think(w: World, p: Person, focus: boolean) {
   if (place.features.includes('library')) opts.push(opt('study', deficit(p, 'learn') * 1.5, 'Reading in the library', { days: 3, focus: 'scholarship' }))
 
   // Some people do not wander: royals, rulers, bosses, butlers, children, prisoners of their family.
-  const homebound = /prince|royal|ruler|don|politician|butler|child/.test(p.role) || age(w, p) < 13 || !!p.flags.confined
+  const homebound = /prince|royal|ruler|don|politician|butler|child/.test(p.role) || age(w, p) < 13 || !!p.flags.confined || !!p.flags.homebound || age(w, p) > 85
   const roam = homebound ? 0.1 : 1
   // Fighting for its own sake.
   if (p.nen.awake && deficit(p, 'fight') > 0.4 && !homebound) {
@@ -122,9 +133,7 @@ export function think(w: World, p: Person, focus: boolean) {
 
   // Seeing the world: somewhere not too far, most of the time.
   if (deficit(p, 'adventure') > 0.3 && !p.flags.confined) {
-    const here0 = w.places[p.loc]
-    const cand = w.places.filter((x) => x.id !== p.loc && x.kind !== 'beyond' && x.kind !== 'ship' && !x.features.includes('game') && (!x.hidden || p.home === x.id))
-      .sort((a, b) => ((a.x - here0.x) ** 2 + (a.y - here0.y) ** 2) - ((b.x - here0.x) ** 2 + (b.y - here0.y) ** 2))
+    const cand = nearby(w, p.loc).filter((x) => !x.hidden || p.home === x.id)
     const dest = cand[Math.min(cand.length - 1, Math.floor(r.next() * r.next() * cand.length))]
     if (dest) opts.push(opt('travel', (deficit(p, 'adventure') * 1.1 + f.curiosity / 400) * roam, `Travelling to ${dest.name}`, { place: dest.id }))
   }
@@ -192,6 +201,22 @@ export function think(w: World, p: Person, focus: boolean) {
   apply(w, p, best, focus)
 }
 
+/** Ordinary places by distance from one place, nearest first. Static, so
+ *  worked out once per world. */
+const NEAR = new WeakMap<World, Map<Id, Place[]>>()
+function nearby(w: World, from: Id): Place[] {
+  let m = NEAR.get(w)
+  if (!m) NEAR.set(w, (m = new Map()))
+  let l = m.get(from)
+  if (!l) {
+    const o = w.places[from]
+    l = w.places.filter((x) => x.id !== from && x.kind !== 'beyond' && x.kind !== 'ship' && !x.features.includes('game'))
+      .sort((a, b) => ((a.x - o.x) ** 2 + (a.y - o.y) ** 2) - ((b.x - o.x) ** 2 + (b.y - o.y) ** 2))
+    m.set(from, l)
+  }
+  return l
+}
+
 function apply(w: World, p: Person, o: Option, focus: boolean) {
   if (o.plan !== undefined) p.plan = o.plan
   if (o.run) o.run()
@@ -205,7 +230,9 @@ function apply(w: World, p: Person, o: Option, focus: boolean) {
     p.nextThink = w.t + 1
     return
   }
-  const days = Math.max(1, Math.min(o.days ?? 2, focus ? 2 : 7))
+  let days = Math.max(1, Math.min(o.days ?? 2, focus ? 2 : 7))
+  // Away from the focus, minor people commit to things a little longer.
+  if (!focus && !p.major && !p.owned && o.k !== 'hunt' && o.k !== 'investigate') days = Math.max(days, 2 + (p.id & 1))
   p.act = { k: o.k, with: o.with, until: w.t + days, note: o.why, focus: o.focus }
   p.nextThink = w.t + days
 }
@@ -213,11 +240,7 @@ function apply(w: World, p: Person, o: Option, focus: boolean) {
 /* ================= Doing ================= */
 
 export function mentorHere(w: World, p: Person): Person | null {
-  for (const q of at(w, p.loc)) {
-    if (q === p || !q.alive) continue
-    if (hasBond(p.rel[q.id], 'mentor') && isFree(q)) return q
-  }
-  return null
+  return firstBonded(w, p, 'mentor', (q) => q.loc === p.loc && !q.trip && isFree(q))
 }
 
 /** One day of whatever someone is doing. */
@@ -351,7 +374,13 @@ function crimeDay(w: World, p: Person) {
 function gameDay(w: World, p: Person) {
   const r = rng(w)
   const d = p.dreams.find((x) => x.k === 'clear' && !x.done)
-  const gain = (0.25 + p.mind.int / 300 + p.nen.lvl / 300) * (p.party != null ? 1.4 : 1) * (0.5 + r.next())
+  // A hundred designated-slot cards. The first seventy come to anyone
+  // patient; the last thirty need luck, spells, trades, and a team that can
+  // hold what it has. Most players never get there.
+  const team = p.party != null ? w.parties.find((x) => x.id === p.party)?.members.filter((id) => w.people[id]?.alive && w.people[id].loc === p.loc).length ?? 1 : 1
+  const prog = d?.prog ?? 0
+  const late = prog > 90 ? (team >= 3 ? 0.25 : 0.06) : prog > 70 ? 0.4 : 1
+  const gain = (0.07 + p.mind.int / 500 + p.nen.lvl / 500) * Math.min(2, 1 + 0.3 * (team - 1)) * late * (0.5 + r.next())
   if (d) d.prog = Math.min(100, d.prog + gain)
   p.nen.lvl = Math.min(p.nen.cap, p.nen.lvl + 0.02)
   if (d && d.prog >= 100) {
@@ -367,11 +396,13 @@ export function placeDay(w: World, place: Id) {
   const r = rng(w)
   const here = at(w, place)
   if (here.length < 2) return
-  // Notice: who is here, for people one cares about.
-  for (const p of here) {
-    for (const q of here) {
-      if (p === q) continue
-      if (p.rel[q.id] || q.fame > 30 || p.plan?.target === q.id) see(w, p, q)
+  // Notice: who is here, for people one cares about. Sightings only need to
+  // be roughly fresh, so a crowded place is surveyed every third day.
+  if ((w.t + place) % 3 === 0) {
+    for (const p of here) {
+      for (const q of here) {
+        if (p !== q && (p.rel[q.id] || q.fame > 30 || p.plan?.target === q.id)) see(w, p, q)
+      }
     }
   }
   // Chance meetings between strangers.
@@ -411,23 +442,27 @@ function wantsTeacher(w: World, p: Person): boolean {
   if (p.species !== 'human' || p.nen.lvl >= 38 || p.conds.length) return false
   const a = age(w, p)
   if (a < 10 || a > 35) return false
-  if (Object.values(p.rel).some((x) => hasBond(x, 'mentor'))) return false
+  // A teacher on the other side of the world teaches nothing.
+  for (const q of at(w, p.loc)) if (q !== p && hasBond(p.rel[q.id], 'mentor')) return false
   if (/prince|royal|ruler|don|politician/.test(p.role)) return false
   return p.dreams.some((d) => !d.done && !d.failed && ['strongest', 'hunter', 'avenge', 'defeat', 'master', 'clear'].includes(d.k)) || p.needW.train > 1.3
 }
 
 function canTeach(w: World, q: Person, p: Person): boolean {
-  if (q === p || !q.alive || !q.nen.awake || q.conds.length) return false
-  if (q.nen.lvl < Math.max(50, p.nen.lvl + 20) || age(w, q) < 22) return false
+  if (q === p || !q.nen.awake || q.nen.lvl < Math.max(50, p.nen.lvl + 20) || !q.alive || q.conds.length) return false
+  if (age(w, q) < 22) return false
   if (q.orgs.some((m) => ['troupe', 'ants', 'bombers'].includes(w.orgs[m.org].key))) return false
   if ((q.rel[p.id]?.aff ?? 0) < -10) return false
-  const students = Object.values(q.rel).filter((x) => hasBond(x, 'student')).length
+  let students = 0
+  for (const id of bondList(q)) if (hasBond(q.rel[id], 'student')) students++
   if (students >= 3) return false
   return q.role === 'master' || q.facets.empathy > 55 || (q.rel[p.id]?.aff ?? 0) > 30
 }
 
 export function relationsWeekly(w: World, p: Person) {
-  decayRelations(w, p, 7)
+  // Forgetting is slow; it is done in four-week steps, a quarter of the
+  // people each week.
+  if ((Math.floor(w.t / 7) + p.id) % 4 === 0) decayRelations(w, p, 28)
 }
 
 export { members }

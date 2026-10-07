@@ -10,6 +10,7 @@ import type { Person, World } from '../types'
 import { at, orgK, personK, placeK, rng, members } from '../world'
 import { power } from '../people/person'
 import { remember } from '../people/memory'
+import { change, hasBond } from '../people/relations'
 import { leaveGame, travel } from './travel'
 import { fight } from '../combat/aftermath'
 import { startStory, endStory } from '../story/storyteller'
@@ -85,6 +86,18 @@ export function clearGame(w: World, p: Person) {
     const d = q.dreams.find((x) => x.k === 'find' && !x.done)
     if (!d || d.target == null) continue
     const t = w.people[d.target]
+    // Ging made the game. He knew who would come looking with that card.
+    if (t?.alive && t.flags.elusive) {
+      const stand = Object.keys(t.rel).map((id) => w.people[+id]).find((x) => x?.alive && x !== q && (t.rel[x.id].aff > 50) && (hasBond(t.rel[x.id], 'student') || hasBond(t.rel[x.id], 'friend')))
+      if (stand) {
+        log(w, { type: 'quest', imp: 3, who: [q.id, t.id, stand.id], cause: ev, text: `${P(q)} uses Accompany, naming ${P(t)}. The card lands them in front of ${P(stand)} instead. ${P(t)} saw this coming years ago.` })
+        travel(w, q, stand.loc, true)
+        q.flags[`near:${t.id}`] = ((q.flags[`near:${t.id}`] as number) || 0) + 2
+        change(w, q, stand, { aff: 15, fam: 25 })
+        change(w, stand, q, { aff: 15, fam: 25 })
+        continue
+      }
+    }
     if (t?.alive) {
       q.seen[t.id] = [t.loc, w.t]
       log(w, { type: 'quest', imp: 3, who: [q.id, t.id], cause: ev, text: `${P(q)} uses Accompany, naming ${P(t)}. The card goes where the name is.` })

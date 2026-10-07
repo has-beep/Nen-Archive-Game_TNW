@@ -12,14 +12,14 @@
 import { L, O, P, log } from '../history'
 import type { Dream, DreamKind, Id, Intent, Person, World } from '../types'
 import type { ActKind } from '../types'
-import { alive, at, members, orgK, personK, placeK, rng } from '../world'
+import { alive, at, members, orgK, personK, placeK, rng, touch } from '../world'
 import { age, hpMax, isAdult, power, inOrg } from './person'
 import { factById, investigate, knownKiller, whereIs, addFact, learn } from './knowledge'
 import { remember } from './memory'
-import { change, hasBond, setBond } from './relations'
+import { change, firstBonded, hasBond, isKin, setBond } from './relations'
 import { swearAllIn, swearVow } from '../nen/vows'
 import { contractsFor } from '../society/economy'
-import { route } from '../society/travel'
+import { route, travel } from '../society/travel'
 import { offerCrossroad } from '../player/player'
 import { startStory } from '../story/storyteller'
 
@@ -86,7 +86,7 @@ const HANDLERS: Partial<Record<DreamKind, Handler>> = {
     const t = w.people[d.target]
     if (!t || !t.alive) { d.failed = w.t; return [] }
     if (t.loc === p.loc && !t.trip && !p.trip) {
-      return [{ k: 'social', u: 4 * pri(d), why: `Finally face to face with ${t.name}`, with: t.id, days: 2, run: () => found(w, p, t, d) }]
+      return [{ k: 'social', u: 4 * pri(d), why: `Finally face to face with ${t.name}`, with: t.id, days: 2, run: () => (slipsAway(w, p, t) ? void 0 : found(w, p, t, d)) }]
     }
     const wi = whereIs(w, p, t)
     if (wi && wi.age < 40) return [go(w, p, wi.place, 2.6 * pri(d), `Going after ${t.name}, last seen in ${w.places[wi.place].name}`)]
@@ -360,7 +360,18 @@ const HANDLERS: Partial<Record<DreamKind, Handler>> = {
 
   /* ---------- Teach ---------- */
   master(w, p, d) {
-    if (!p.nen.awake || p.nen.lvl < 45) return [{ k: 'train', u: 0.9 * pri(d), why: 'Mastering the basics properly', days: 5 }]
+    if (!p.nen.awake || p.nen.lvl < 45) {
+      // Training needs a teacher in the same room. Go to yours, or go where
+      // teachers are: Heavens Arena, where every fighter past the 200th floor
+      // uses Nen and the masters come to watch their students.
+      const mentor = Object.keys(p.rel).map((id) => w.people[+id]).find((q) => q?.alive && hasBond(p.rel[q.id], 'mentor'))
+      if (mentor && mentor.loc === p.loc) return [{ k: 'train', u: 1.5 * pri(d), why: `Training under ${mentor.name}`, days: 5 }]
+      if (mentor && !mentor.trip && (p.rel[mentor.id]?.aff ?? 0) > 10) return [go(w, p, mentor.loc, 1.3 * pri(d), `Going back to ${mentor.name} to train`)]
+      const arena = placeK(w, 'arena')
+      if (!p.nen.awake && p.loc !== arena.id && p.species === 'human') return [go(w, p, arena.id, 1.2 * pri(d), 'Heading to Heavens Arena, where people learn Nen')]
+      if (!p.nen.awake) return [{ k: 'arena', u: 1.1 * pri(d), why: 'Climbing Heavens Arena and looking for a teacher', days: 4 }, { k: 'train', u: 0.8 * pri(d), why: 'Training alone', days: 3 }]
+      return [{ k: 'train', u: 0.9 * pri(d), why: 'Mastering the basics properly', days: 5 }]
+    }
     if (p.role !== 'master' && p.nen.lvl >= 55 && age(w, p) >= 25 && !p.orgs.some((m) => ['troupe', 'zoldyck', 'ants'].includes(w.orgs[m.org].key))) p.role = 'master'
     const students = at(w, p.loc).filter((q) => hasBond(p.rel[q.id], 'student'))
     if (students.length) return [{ k: 'teach', u: 1.2 * pri(d), why: `Teaching ${students.map((s) => s.short).join(' and ')}`, with: students[0].id, days: 4 }]
@@ -373,9 +384,8 @@ const HANDLERS: Partial<Record<DreamKind, Handler>> = {
 
   family(w, p, d) {
     // Romance does the work; this keeps the wish alive and nudges dating.
-    const partner = Object.keys(p.rel).map(Number).find((id) => hasBond(p.rel[id], 'spouse') || hasBond(p.rel[id], 'lover'))
-    if (partner != null) {
-      const q = w.people[partner]
+    const q = firstBonded(w, p, 'spouse') || firstBonded(w, p, 'lover')
+    if (q) {
       if (q?.alive && q.loc === p.loc) return [{ k: 'family', u: 0.9 * pri(d), why: `Spending time with ${q.name}`, with: q.id, days: 2 }]
       if (q?.alive) return [go(w, p, q.loc, 0.6 * pri(d), `Going home to ${q.name}`)]
     }
@@ -391,6 +401,30 @@ function found(w: World, p: Person, t: Person, d: Dream) {
   change(w, t, p, { fam: 15, aff: 5 })
   const ev = log(w, { type: 'bond', imp: p.major || t.major || p.owned ? 4 : 2, who: [p.id, t.id], at: p.loc, text: `${P(p)} finds ${P(t)} at last, in ${L(w.places[p.loc])}.` })
   remember(w, p, { k: 'found', who: t.id, val: 60, str: 80, ev, text: `Found ${t.name}.` })
+}
+
+/** Someone who does not want to be found is gone by the time you arrive,
+ *  leaving a trail warm enough to keep you going. Each near miss counts;
+ *  the ones who keep coming, and have proved something, catch up in the end. */
+function slipsAway(w: World, p: Person, t: Person): boolean {
+  const r = rng(w)
+  const elusive = (t.flags.elusive as number) || 0
+  if (!elusive) return false
+  const k = `near:${t.id}`
+  const near = ((p.flags[k] as number) || 0) + 1
+  p.flags[k] = near
+  // He decides when. Persistence counts for a little; clearing his game and
+  // making a name for yourself count for a lot.
+  const tr = t.rel[p.id]
+  const earned = (p.license ? 0.04 : 0) + (p.dreams.some((x) => x.k === 'clear' && x.done) ? 0.4 : 0) + Math.min(0.15, near * 0.02) + (p.fame > 40 ? 0.1 : 0) + ((tr?.resp ?? 0) > 85 ? 0.2 : 0)
+  if (!r.chance(elusive - earned)) return false
+  const away = w.places.filter((x) => x.id !== t.loc && !x.hidden && x.kind !== 'beyond' && !x.features.includes('game'))
+  const dest = r.pick(away)
+  travel(w, t, dest.id)
+  p.seen[t.id] = [dest.id, w.t - 30]
+  log(w, { type: 'misc', imp: p.owned ? 3 : p.major ? (near === 1 ? 3 : 2) : 1, who: [p.id, t.id], at: p.loc, text: `${P(p)} reaches ${L(w.places[p.loc])} a day after ${P(t)} left it. There is a rumour he was heading for ${L(dest)}.` })
+  remember(w, p, { k: 'missed', who: t.id, val: -15, str: 35, text: `Just missed ${t.name}.` })
+  return true
 }
 
 function searchFor(w: World, p: Person, t: Person, d: Dream) {
@@ -514,6 +548,7 @@ function freeSomeone(w: World, p: Person, t: Person, d: Dream) {
   const ev = log(w, { type: 'bond', imp: p.major || t.major ? 4 : 2, who: [p.id, t.id], at: p.loc, text: `${P(p)} walks out of ${L(w.places[p.loc])} with ${P(t)}, and nobody stops them.` })
   remember(w, t, { k: 'freed', who: p.id, val: 80, str: 90, ev, text: `${p.name} took me out of there.` })
   t.loc = p.loc
+  touch(w, t)
 }
 
 function pickAway(w: World, p: Person): Id {
@@ -579,7 +614,7 @@ export function considerVengeance(w: World, q: Person, killer: Person | null, de
   const e2 = log(w, { type: 'vow', imp: q.major || dead.major ? 3 : 2, who: killer ? [q.id, killer.id, dead.id] : [q.id, dead.id], at: q.loc, cause: ev, text })
   if (killer) startStory(w, 'vendetta', `${q.name} against ${killer.name}`, [q.id, killer.id], e2, `revenge-${q.id}-${killer.id}`)
   // The strongest grief binds Nen itself.
-  if (killer && q.nen.awake && score > 0.62 && !q.nen.vows.length && r.chance(0.18)) {
+  if (killer && q.nen.awake && score > 0.62 && !q.nen.vows.length && ((q.rel[dead.id]?.fam ?? 0) >= 60 || isKin(q, dead.id)) && r.chance(0.18)) {
     const allIn = love > 0.9 && q.facets.impulsivity > 70 && q.facets.vengefulness > 70 && power(killer) > power(q) * 1.8 && q.nen.pot > 1.2
     if (allIn && r.chance(0.5)) swearAllIn(w, q, killer, e2)
     else swearVow(w, q, wide && org ? { org } : { person: killer }, score > 0.8 ? 5 : score > 0.7 ? 4 : 3, e2, `for ${dead.name}`)

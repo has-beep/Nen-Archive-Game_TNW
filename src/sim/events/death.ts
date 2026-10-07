@@ -43,7 +43,7 @@ export function kill(w: World, p: Person, o: KillOpts): Id {
   p.death = { t: w.t, at: p.trip ? p.trip.to : p.loc, cause: o.cause, by: by?.id, ev: o.ev }
   p.trip = undefined
   p.plan = null
-  touch(w)
+  touch(w, p)
   let ev = o.ev
   if (ev == null) {
     const famous = p.major || p.fame >= 40 || p.owned
@@ -132,7 +132,8 @@ function mourn(w: World, dead: Person, by: Person | null, ev: Id) {
   let named = 0
   for (const q of mourners) {
     const rq = q.rel[dead.id]
-    const love = Math.max(rq.aff, isKin(q, dead.id) ? 60 : 0) / 100
+    // How much someone meant: how warmly, and for how long.
+    const love = Math.max(rq.aff * Math.min(1, 0.4 + rq.fam / 100), isKin(q, dead.id) ? 60 : 0) / 100
     q.mood.grief = Math.min(100, q.mood.grief + 30 + love * 50)
     q.mood.anger = Math.min(100, q.mood.anger + love * 35 * (q.facets.vengefulness / 60))
     remember(w, q, { k: 'loss', who: dead.id, val: -80 * love, str: 60 + love * 35, ev, text: `${dead.name} died${by ? `, killed by ${by.name}` : ''}.` })

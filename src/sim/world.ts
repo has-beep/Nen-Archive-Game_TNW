@@ -17,6 +17,7 @@ interface Index {
   nationKey: Map<string, Nation>
   personKey: Map<string, Person>
   members: Map<Id, Person[]>
+  pos: Map<Id, Id>
 }
 
 const RNG = new WeakMap<World, Rng>()
@@ -35,7 +36,7 @@ function idx(w: World): Index {
   let i = IDX.get(w)
   if (!i) {
     i = {
-      t: -1, dirty: true, at: new Map(), alive: [], members: new Map(),
+      t: -1, dirty: true, at: new Map(), alive: [], members: new Map(), pos: new Map(),
       placeKey: new Map(w.places.map((p) => [p.key, p])),
       orgKey: new Map(w.orgs.map((o) => [o.key, o])),
       nationKey: new Map(w.nations.map((n) => [n.key, n])),
@@ -49,8 +50,9 @@ function idx(w: World): Index {
 }
 
 function rebuild(w: World, i: Index) {
-  i.at.clear()
-  i.members.clear()
+  i.at = new Map()
+  i.members = new Map()
+  i.pos = new Map()
   i.alive = []
   for (const p of w.people) {
     if (!p.alive) continue
@@ -59,6 +61,7 @@ function rebuild(w: World, i: Index) {
       let l = i.at.get(p.loc)
       if (!l) i.at.set(p.loc, (l = []))
       l.push(p)
+      i.pos.set(p.id, p.loc)
     }
     for (const m of p.orgs) {
       let l = i.members.get(m.org)
@@ -71,10 +74,25 @@ function rebuild(w: World, i: Index) {
 }
 
 /** Call after anything that changes who is where, who is alive, or who
- *  belongs to what. */
-export function touch(w: World) {
+ *  belongs to what. Passing the one person who moved or died updates the
+ *  index in place instead of rebuilding it. Lists are replaced, never
+ *  edited, so a loop already walking one is never disturbed. */
+export function touch(w: World, p?: Person) {
   const i = IDX.get(w)
-  if (i) i.dirty = true
+  if (!i) return
+  if (!p) { i.dirty = true; return }
+  if (i.dirty || i.t !== w.t) return
+  const old = i.pos.get(p.id) ?? -1
+  const now = p.alive && !p.trip ? p.loc : -1
+  if (old !== now) {
+    if (old >= 0) { const l = i.at.get(old); if (l) i.at.set(old, l.filter((x) => x !== p)) }
+    if (now >= 0) { const l = i.at.get(now); i.at.set(now, l ? l.concat(p) : [p]) }
+    i.pos.set(p.id, now)
+  }
+  if (!p.alive && i.alive.includes(p)) {
+    i.alive = i.alive.filter((x) => x !== p)
+    for (const m of p.orgs) { const l = i.members.get(m.org); if (l) i.members.set(m.org, l.filter((x) => x !== p)) }
+  }
 }
 
 /** Call after adding people, organisations, places or nations. */

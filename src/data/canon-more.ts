@@ -426,8 +426,8 @@ export const CANON_MORE: CanonDef[] = [
     bio: 'A queen of the Chimera Ants, two metres long, from the Dark Continent. She eats to give birth.',
   },
   {
-    key: 'meruem', name: 'Meruem', short: 'Meruem', sex: 'm', born: 2000, species: 'ant', appears: 'ants', home: 'ngl', nation: 'none', type: X, lvl: 96, pot: 0.5, cap: 125,
-    body: [99, 99, 99, 99, 99, 95], mind: [99, 99, 90, 95, 95], major: true, role: 'ant', title: 'King',
+    key: 'meruem', name: 'Meruem', short: 'Meruem', sex: 'm', born: 2000, species: 'ant', appears: 'ants', home: 'ngl', nation: 'none', type: X, lvl: 104, pot: 0.5, cap: 125,
+    body: [130, 115, 140, 120, 110, 100], mind: [99, 99, 90, 95, 95], major: true, role: 'ant', title: 'King',
     orgs: [['ants', 3, { title: 'King', loyalty: 100 }]],
     p: { bravery: 99, aggression: 80, empathy: 5, honesty: 85, loyalty: 30, ambition: 95, curiosity: 80, discipline: 80, pride: 99, cruelty: 75, impulsivity: 40, sociability: 20, composure: 85, whimsy: 20 },
     v: { strength: 50, power: 50, knowledge: 35 },
@@ -435,12 +435,12 @@ export const CANON_MORE: CanonDef[] = [
     skills: { strategy: 99, unarmed: 95, perception: 95 },
     hatsu: [
       { name: 'Aura Synthesis', kind: 'absorb', cats: [[S, 1]], base: 1.4, desc: 'He takes the aura and abilities of whatever Nen user he eats.', effects: [{ k: 'absorb', p: 2.0 }] },
-      { name: 'Rage Blast', kind: 'blast', cats: [[X, 1]], base: 1.4, desc: 'Aura released in a blast that levels everything around him.', effects: [{ k: 'damage', p: 3.0, range: 'area' }] },
+      { name: 'Rage Blast', kind: 'blast', cats: [[X, 1]], base: 1.4, desc: 'Aura released in a blast that levels everything around him.', effects: [{ k: 'damage', p: 2.3, range: 'area' }] },
     ],
     bio: 'The King of the Chimera Ants, born to rule the world. Stronger than anything that has ever walked in Lake Mobius.',
   },
   {
-    key: 'neferpitou', name: 'Neferpitou', short: 'Pitou', sex: 'f', born: 2000, species: 'ant', appears: 'ants', home: 'ngl', nation: 'none', type: S, lvl: 90, pot: 0.3, cap: 100, enR: 2000,
+    key: 'neferpitou', name: 'Neferpitou', short: 'Pitou', sex: 'f', born: 2000, species: 'ant', appears: 'ants', home: 'ngl', nation: 'none', type: S, lvl: 85, pot: 0.3, cap: 100, enR: 2000,
     body: [88, 97, 85, 90, 97, 92], mind: [80, 90, 85, 90, 50], major: true, role: 'ant', title: 'Royal Guard',
     orgs: [['ants', 2, { title: 'Royal Guard', loyalty: 100 }]],
     p: { bravery: 95, aggression: 75, empathy: 5, honesty: 75, loyalty: 100, curiosity: 95, cruelty: 80, whimsy: 85, composure: 70, sociability: 40 },
@@ -455,7 +455,7 @@ export const CANON_MORE: CanonDef[] = [
     bio: 'The first of the King\'s three Royal Guards. Curious, catlike, and terrifying: their first En stopped Kite and Kurapika\'s heart in the same instant.',
   },
   {
-    key: 'shaiapouf', name: 'Shaiapouf', short: 'Pouf', sex: 'm', born: 2000, species: 'ant', appears: 'ants', home: 'ngl', nation: 'none', type: S, lvl: 86, pot: 0.3, cap: 96,
+    key: 'shaiapouf', name: 'Shaiapouf', short: 'Pouf', sex: 'm', born: 2000, species: 'ant', appears: 'ants', home: 'ngl', nation: 'none', type: S, lvl: 82, pot: 0.3, cap: 96,
     body: [75, 85, 75, 80, 85, 90], mind: [92, 85, 85, 90, 80], role: 'ant', title: 'Royal Guard',
     orgs: [['ants', 2, { title: 'Royal Guard', loyalty: 100 }]],
     p: { bravery: 70, aggression: 60, empathy: 10, honesty: 20, loyalty: 100, cruelty: 80, composure: 30, impulsivity: 55, pride: 80 },
@@ -469,7 +469,7 @@ export const CANON_MORE: CanonDef[] = [
     bio: 'The second Royal Guard, obsessed with what the King should be.',
   },
   {
-    key: 'menthuthuyoupi', name: 'Menthuthuyoupi', short: 'Youpi', sex: 'm', born: 2000, species: 'ant', appears: 'ants', home: 'ngl', nation: 'none', type: T, lvl: 88, pot: 0.3, cap: 98,
+    key: 'menthuthuyoupi', name: 'Menthuthuyoupi', short: 'Youpi', sex: 'm', born: 2000, species: 'ant', appears: 'ants', home: 'ngl', nation: 'none', type: T, lvl: 84, pot: 0.3, cap: 98,
     body: [99, 70, 99, 95, 75, 70], mind: [45, 80, 60, 60, 40], role: 'ant', title: 'Royal Guard',
     orgs: [['ants', 2, { title: 'Royal Guard', loyalty: 100 }]],
     p: { bravery: 99, aggression: 90, empathy: 30, honesty: 90, loyalty: 100, cruelty: 50, impulsivity: 70, composure: 35 },

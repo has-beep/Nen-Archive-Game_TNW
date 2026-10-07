@@ -11,14 +11,14 @@ import { L, O, P, log } from '../history'
 import type { Person, World } from '../types'
 import { CANON_MORE } from '../../data/canon-more'
 import { alive, at, members, orgK, personK, placeK, rng, touch, nationK } from '../world'
-import { power, hpMax } from '../people/person'
+import { power, hpMax, inOrg } from '../people/person'
 import { joinOrg, leaveOrg } from './orgs'
 import { awaken } from '../nen/nen'
 import { kill } from '../events/death'
 import { fight } from '../combat/aftermath'
 import { buildCanon } from '../worldgen/canon'
 import { travel } from './travel'
-import { change } from '../people/relations'
+import { change, hasBond } from '../people/relations'
 import { remember } from '../people/memory'
 import { startStory, endStory } from '../story/storyteller'
 import { addFact, learn } from '../people/knowledge'
@@ -89,13 +89,15 @@ function antsDaily(w: World, s: AntState) {
     }
     if (days === 55) {
       s.stage = 'guards'
-      for (const k of ['neferpitou', 'shaiapouf', 'menthuthuyoupi']) spawnAnt(w, k, ngl.id)
+      // The Guard do not wander: wherever the King is, they are.
+      for (const k of ['neferpitou', 'shaiapouf', 'menthuthuyoupi']) { const g = spawnAnt(w, k, ngl.id); if (g) g.flags.homebound = 1 }
       log(w, { type: 'calamity', imp: 5, at: ngl.id, cause: s.ev, text: `Three ants are born in ${L(ngl)} who are nothing like the others. The squadron leaders kneel without being told. They are the Royal Guard, and their aura can be felt for kilometres.` })
     }
     if (days === 95) {
       s.stage = 'king'
       const k = spawnAnt(w, 'meruem', ngl.id)
       if (k) {
+        k.flags.homebound = 1
         org.leader = k.id
         const ev = log(w, { type: 'calamity', imp: 5, who: [k.id], at: ngl.id, cause: s.ev, text: `The King of the Chimera Ants tears his way out of his mother. ${P(queen)} is left dying. He does not look back, and he does not yet know his own name.` })
         kill(w, queen, { cause: 'giving birth to the King', ev, quiet: true })
@@ -145,6 +147,14 @@ function antsDaily(w: World, s: AntState) {
     pg.pop = Math.max(0, pg.pop * 0.6)
     log(w, { type: 'calamity', imp: 5, who: [king.id], at: peijin.id, text: `The "selection" in ${L(peijin)}: five million people are gathered in the square to have their aura forced open by Shaiapouf. Those who survive will be food, or soldiers.` })
   }
+  // Wherever ants are, the place is deadly, and people who can leave do.
+  for (const a of members(w, org.id)) {
+    if (a.trip) continue
+    const pl = w.places[a.loc]
+    pl.hazard = Math.max(pl.hazard, 0.6)
+    pl.hazardKind = pl.hazardKind === 'rose' ? 'rose' : 'ants'
+    pl.hazardUntil = Math.max(pl.hazardUntil, w.t + 20)
+  }
   // Ants roam and hunt.
   for (const a of members(w, org.id)) {
     if (!a.alive || a.trip || a.title === 'Queen') continue
@@ -154,7 +164,8 @@ function antsDaily(w: World, s: AntState) {
       const dest = r.pick(near)
       if (dest.id !== a.loc) travel(w, a, dest.id, true)
     }
-    const prey = at(w, a.loc).filter((q) => q.species !== 'ant' && !q.conds.length && q.lastFight < w.t - 1)
+    // The King's Gungi player is not food: the Guards see to it.
+    const prey = at(w, a.loc).filter((q) => q.species !== 'ant' && !q.conds.length && q.lastFight < w.t - 1 && q.key !== 'komugi')
     if (prey.length && a.title !== 'King' && r.chance(0.25)) {
       const v = r.pick(prey)
       if (!a.flags.humanMemory || r.chance(0.3)) fight(w, { a: [a], b: [v], intentA: 'kill', place: a.loc, why: 'as the ants hunt', cause: s.ev })
@@ -167,8 +178,12 @@ function antsDaily(w: World, s: AntState) {
     const ev = log(w, { type: 'calamity', imp: 5, orgs: [ha.id], cause: s.ev, text: `Word reaches the ${O(ha)}: something in ${L(ngl)} is eating people and learning from it. Hunters are called to stop the Chimera Ants.` })
     const f = addFact(w, { k: 'secret', s: -1, d: 'ants', secret: -1, imp: 5, text: 'Chimera Ants are loose in NGL.', ev })
     void f
+    // The call goes out, but the Zodiacs stay at their posts and most Hunters
+    // have their own work. A few go: the brave, the ones it is their job.
+    const zod = orgK(w, 'zodiacs')
     for (const h of members(w, ha.id)) {
-      if (h.nen.lvl > 55 && h.facets.bravery > 55 && !h.plan && h.license && h.role !== 'virus' && r.chance(0.4)) {
+      const job = ['beast', 'blacklist', 'crime', 'contract', 'master', 'rookie'].includes(h.role)
+      if (h.nen.lvl > 55 && h.facets.bravery > 60 && !h.plan && h.license && job && h.id !== ha.leader && !inOrg(h, zod.id) && r.chance(0.18)) {
         h.plan = { k: 'go', place: ngl.id, until: w.t + 120, why: 'Answering the Association\'s call against the Chimera Ants', ev }
         h.nextThink = w.t
       }
@@ -205,10 +220,19 @@ function strikeTeam(w: World, s: AntState) {
   const ha = orgK(w, 'ha')
   const peijin = placeK(w, 'peijin')
   const chair = w.people[ha.leader]
-  const strong = members(w, ha.id).filter((h) => h.nen.lvl > 60 && h.facets.bravery > 50 && !h.conds.length).sort((a, b) => power(b) - power(a))
-  const team = [chair, ...strong].filter((p, i, a) => p && p.alive && a.indexOf(p) === i).slice(0, 7)
-  // Anyone with a score to settle with the ants comes too.
-  for (const p of alive(w)) if (p.dreams.some((d) => d.k === 'avenge' && w.people[d.target ?? -1]?.species === 'ant' && !d.done) && !team.includes(p)) team.push(p)
+  // The Chairman takes a few he trusts, not the Zodiacs, who must keep the
+  // Association running; each brings the students they trust in a fight.
+  const zod = orgK(w, 'zodiacs')
+  const strong = members(w, ha.id).filter((h) => h !== chair && h.nen.lvl > 60 && h.facets.bravery > 50 && !h.conds.length && !inOrg(h, zod.id) && (!chair || (chair.rel[h.id]?.aff ?? 0) > 20 || h.fame > 50))
+    .sort((a, b) => power(b) - power(a)).slice(0, 3)
+  const team = [chair, ...strong].filter((p, i, a) => p && p.alive && a.indexOf(p) === i)
+  for (const t of team.slice()) for (const q of alive(w)) if (hasBond(t.rel[q.id], 'student') && q.nen.lvl > 45 && !team.includes(q) && !q.conds.length && team.length < 8) team.push(q)
+  // A Zoldyck can be hired to carry the Chairman in.
+  const zeno = personK(w, 'zeno_zoldyck')
+  if (chair?.alive && zeno?.alive && !team.includes(zeno) && !zeno.conds.length) {
+    team.push(zeno)
+    log(w, { type: 'job', imp: 3, who: [chair.id, zeno.id], cause: s.ev, text: `${P(chair)} hires ${P(zeno)} for one job: get him to the King. Nothing more, at Zeno's insistence.` })
+  }
   if (!team.length) return
   const ev = log(w, { type: 'calamity', imp: 5, who: team.map((p) => p.id), orgs: [ha.id], at: peijin.id, cause: s.ev, text: `${chair?.alive ? `${P(chair)} leads` : 'The Association sends'} a team into East Gorteau to kill the King: ${team.map((p) => P(p)).join(', ')}.` })
   // The V5 give the Chairman a weapon of last resort.
@@ -240,7 +264,15 @@ function palaceAssault(w: World, s: AntState) {
   }
   // The Chairman and the King, alone.
   const out = fight(w, { a: [chair], b: [king], intentA: 'kill', place: peijin.id, why: 'in the palace invasion', cause: ev, record: true, maxExchanges: 70 })
-  if (king.alive && chair.alive && chair.flags.rose) useRose(w, chair, king, out.ev)
+  // Canon: the Chairman takes the King far from the palace first, so the
+  // Rose takes the two of them and the open ground, and nobody else.
+  if (king.alive && chair.alive && chair.flags.rose) {
+    useRose(w, chair, king, out.ev, true)
+    // The Guards who tend their King afterwards carry the poison back with them.
+    for (const g of guards) if (g.alive) g.conds.push({ k: 'contaminated', until: w.t + 300, p: 2.5, note: 'the Rose\'s poison' })
+    const komugi = personK(w, 'komugi')
+    if (komugi?.alive && (king.rel[komugi.id]?.aff ?? 0) > 40) komugi.flags.staysWithKing = 1
+  }
 }
 
 export { hpMax, joinOrg, awaken }

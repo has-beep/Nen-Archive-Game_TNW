@@ -141,15 +141,19 @@ export function isAdult(w: World, p: Person): boolean {
 
 /** Maximum health. Toughness and endurance matter most; aura adds a little
  *  (Ten keeps the body together); ants are built different. */
+/** How much punishment a body takes. Aura is armour as much as weapon: a
+ *  strong Nen user shrugs off blows that would kill anyone else, so the
+ *  body's toughness grows with the square root of the aura they hold. */
 export function hpMax(p: Person): number {
   const a = p.attrs
-  return Math.round(40 + a.tou * 0.75 + a.endu * 0.35 + p.nen.lvl * 0.25 + (p.species === 'ant' ? 40 : 0))
+  const aura = p.nen.awake ? 3.6 * Math.sqrt(auraMax(p) / 14) : 0
+  return Math.round(40 + a.tou * 0.75 + a.endu * 0.35 + p.nen.lvl * 0.25 + aura + (p.species === 'ant' ? 30 : 0))
 }
 
 /** Maximum aura, on the series' rough scale: about 21,000 at Nen level 50. */
 export function auraMax(p: Person): number {
   if (!p.nen.awake) return 0
-  return Math.round((100 + Math.pow(p.nen.lvl, 2.3) * 2.6) * (p.species === 'ant' ? 1.4 : 1))
+  return Math.round((100 + Math.pow(p.nen.lvl, 2.3) * 2.6) * (p.species === 'ant' ? 1.2 : 1))
 }
 
 /** Aura output per exchange in a fight. Ren unlocks most of it. */
@@ -211,7 +215,7 @@ export function power(p: Person): number {
   }
   const wm = woundMods(p)
   const health = 0.45 + 0.55 * Math.max(0, p.hp) / hpMax(p)
-  return Math.max(1, (phys + skill + nen) * wm.atk * health * (p.species === 'ant' ? 1.25 : 1))
+  return Math.max(1, (phys + skill + nen) * wm.atk * health * (p.species === 'ant' ? 1.1 : 1))
 }
 
 /** A Nen level a non-awakened person "counts as" when the AI sizes them up. */

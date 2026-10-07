@@ -416,8 +416,10 @@ function slipsAway(w: World, p: Person, t: Person): boolean {
   // He decides when. Persistence counts for a little; clearing his game and
   // making a name for yourself count for a lot.
   const tr = t.rel[p.id]
-  const earned = (p.license ? 0.04 : 0) + (p.dreams.some((x) => x.k === 'clear' && x.done) ? 0.4 : 0) + Math.min(0.15, near * 0.02) + (p.fame > 40 ? 0.1 : 0) + ((tr?.resp ?? 0) > 85 ? 0.2 : 0)
-  if (!r.chance(elusive - earned)) return false
+  // Until you have played his game to the end, you are not ready, and he knows.
+  const cleared = p.dreams.some((x) => x.k === 'clear' && x.done)
+  const earned = cleared ? 0.4 + Math.min(0.06, near * 0.01) + (p.fame > 60 ? 0.08 : 0) + ((tr?.resp ?? 0) > 85 ? 0.3 : 0) : 0
+  if (!r.chance(Math.max(cleared ? 0.2 : 0.995, elusive - earned))) return false
   const away = w.places.filter((x) => x.id !== t.loc && !x.hidden && x.kind !== 'beyond' && !x.features.includes('game'))
   const dest = r.pick(away)
   travel(w, t, dest.id)

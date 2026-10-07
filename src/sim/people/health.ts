@@ -26,7 +26,9 @@ export function addWound(w: World, p: Person, frac: number, by?: Id, part?: Body
   const info = PART_INFO[bp]
   const cur = p.wounds.find((x) => x.part === bp && x.left > 0)
   if (cur) {
-    if (cur.sev >= 3 && sev <= cur.sev) return null
+    // A second blow to a hurt limb makes it worse only if it was as hard as
+    // the first; a graze on a broken arm is still a graze.
+    if (sev < cur.sev) return null
     sev = Math.min(3, Math.max(sev, cur.sev + 1)) as 1 | 2 | 3
     p.wounds.splice(p.wounds.indexOf(cur), 1)
   } else if (p.wounds.some((x) => x.part === bp && x.perm)) {

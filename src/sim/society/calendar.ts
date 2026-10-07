@@ -86,7 +86,7 @@ export function announceExam(w: World, year: number) {
   if (ha.dead) return
   const n = (w.counters.examNo || 286) + 1
   w.counters.examNo = n
-  const sites = w.places.filter((p) => p.kind === 'city' && !p.hidden && p.nation !== -1 && p.key !== 'meteor')
+  const sites = w.places.filter((p) => p.kind === 'city' && !p.hidden && p.nation !== -1 && p.key !== 'meteor' && p.hazard < 0.2)
   const place = year === 1999 ? placeK(w, 'zaban') : r.pick(sites)
   const start = tickOf(w.epoch, year, 0, 7 + r.int(6))
   const ev = log(w, { type: 'exam', imp: 3, orgs: [ha.id], at: place.id, text: `The Hunter Association announces the ${n}th Hunter Exam. Its location is a secret only the worthy will find, in ${L(place)}.` })
@@ -211,7 +211,9 @@ function finishExam(w: World, ex: ExamState) {
     const bad = live.find((p) => p.flags.illumiNeedle && live.some((q) => q.key === 'illumi_zoldyck'))
     if (bad && r.chance(0.5)) {
       flunk = bad
-      const victim = live.filter((q) => q !== bad && q.key !== 'illumi_zoldyck' && (bad.rel[q.id]?.aff ?? 0) < 15 && !hasBond(bad.rel[q.id], 'friend')).sort((a, b) => power(a) - power(b))[0]
+      // The needle picks someone he barely knows: a stranger in the next match.
+      const victim = live.filter((q) => q !== bad && q.key !== 'illumi_zoldyck' && (bad.rel[q.id]?.aff ?? 0) < 15 && (bad.rel[q.id]?.fam ?? 0) < 30 && !hasBond(bad.rel[q.id], 'friend'))
+        .sort((a, b) => (a.major ? 1 : 0) - (b.major ? 1 : 0) || power(a) - power(b))[0]
       if (victim) {
         const ev = log(w, { type: 'exam', imp: 4, who: [bad.id, victim.id], at: ex.place, cause: ex.ev, text: `In the final, ${P(bad)} walks into someone else's match and kills ${P(victim)}. Nobody saw it coming, least of all ${P(bad)}. Disqualified.` })
         kill(w, victim, { cause: 'the final of the Hunter Exam', by: bad, ev })

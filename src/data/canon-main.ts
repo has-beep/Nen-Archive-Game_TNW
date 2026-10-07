@@ -94,8 +94,8 @@ export const CANON_MAIN: CanonDef[] = [
     bio: 'Gon\'s great-grandmother, who lives with Mito on Whale Island.',
   },
   {
-    key: 'ging_freecss', name: 'Ging Freecss', short: 'Ging', sex: 'm', born: 1967, home: 'whale', loc: 'azian_ruins', nation: 'free', type: S, lvl: 88, pot: 0.5, cap: 96,
-    body: [72, 80, 72, 80, 82, 85], mind: [96, 85, 88, 92, 72], major: true, role: 'ruins', jenny: 900, fame: 70,
+    key: 'ging_freecss', name: 'Ging Freecss', short: 'Ging', sex: 'm', born: 1967, home: 'whale', loc: 'azian_ruins', nation: 'free', type: S, lvl: 92, pot: 0.5, cap: 96,
+    body: [80, 88, 80, 84, 90, 90], mind: [96, 85, 88, 92, 72], major: true, role: 'ruins', jenny: 900, fame: 70, tech: { ryu: 95, ko: 90, ken: 90, en: 80, gyo: 95, in: 85 },
     orgs: [['ha', 1, { num: 12, title: 'Boar', loyalty: 35 }], ['zodiacs', 0, { num: 12, title: 'Boar', loyalty: 30 }], ['gi_masters', 1, { loyalty: 60 }]],
     license: { stars: 2, field: 'ruins', year: 1979 },
     p: { bravery: 85, aggression: 40, empathy: 40, honesty: 55, loyalty: 45, ambition: 70, curiosity: 98, discipline: 30, pride: 70, greed: 25, cruelty: 25, impulsivity: 65, sociability: 45, trust: 40, vengefulness: 20, whimsy: 85, composure: 80, romantic: 20 },
@@ -107,7 +107,7 @@ export const CANON_MAIN: CanonDef[] = [
     bio: 'One of the best Nen users alive, a Double Star Ruins Hunter, co-creator of Greed Island, and the father who left Gon with Mito. He says a Hunter should enjoy the detours. He wants, more than anything, to go where nobody has been.',
   },
   {
-    key: 'kite', name: 'Kite', short: 'Kite', sex: 'm', born: 1970, home: 'whale', loc: 'whale', nation: 'free', type: C, lvl: 74, pot: 0.45, cap: 86,
+    key: 'kite', name: 'Kite', short: 'Kite', sex: 'm', born: 1970, home: 'whale', loc: 'whale', nation: 'free', type: C, lvl: 76, pot: 0.45, cap: 86,
     body: [66, 74, 66, 72, 76, 82], mind: [80, 82, 78, 80, 60], major: true, role: 'beast', weapon: 'staff', jenny: 120, fame: 22,
     orgs: [['ha', 0, { loyalty: 55 }]], license: { stars: 0, field: 'beast', year: 1990 },
     p: { bravery: 88, aggression: 40, empathy: 65, honesty: 80, loyalty: 85, ambition: 55, curiosity: 85, discipline: 72, pride: 40, greed: 10, cruelty: 10, impulsivity: 30, sociability: 45, trust: 55, vengefulness: 20, whimsy: 35, composure: 85, romantic: 25 },
@@ -120,7 +120,7 @@ export const CANON_MAIN: CanonDef[] = [
   },
   {
     key: 'netero', name: 'Isaac Netero', short: 'Netero', sex: 'm', born: 1888, home: 'swardani', nation: 'mimbo', type: E, lvl: 96, pot: 0.1, cap: 100, span: 125,
-    body: [80, 92, 85, 80, 99, 92], mind: [92, 98, 99, 95, 85], major: true, role: 'chairman', jenny: 3000, fame: 95, tech: { ryu: 100, ko: 100, ken: 100, en: 90, gyo: 100 },
+    body: [90, 94, 92, 82, 99, 95], mind: [92, 98, 99, 95, 85], major: true, role: 'chairman', jenny: 3000, fame: 95, tech: { ryu: 100, ko: 100, ken: 100, en: 90, gyo: 100 },
     orgs: [['ha', 3, { title: 'Chairman', loyalty: 80 }], ['shingen', 2, { loyalty: 90 }]], license: { stars: 3, year: 1920 },
     p: { bravery: 99, aggression: 55, empathy: 60, honesty: 65, loyalty: 75, ambition: 40, curiosity: 80, discipline: 90, pride: 80, greed: 15, cruelty: 25, impulsivity: 30, sociability: 70, trust: 55, vengefulness: 20, whimsy: 85, composure: 95, romantic: 20 },
     v: { strength: 50, honour: 40, freedom: 30, tradition: 25, law: 10 },
@@ -129,7 +129,7 @@ export const CANON_MAIN: CanonDef[] = [
     rel: [['beyond_netero', 'parent', 30, -20, 70], ['pariston_hill', '', 30, -10, 70], ['ging_freecss', '', 55, 50, 80], ['biscuit_krueger', 'mentor', 60, 70, 70], ['cheadle_yorkshire', '', 45, 60, 55], ['zeno_zoldyck', '', 40, 40, 85]],
     hatsu: [
       { name: '100-Type Guanyin Bodhisattva', kind: 'guanyin', cats: [[E, 0.5], [X, 0.3], [M, 0.2]], base: 1.3, desc: 'A towering Bodhisattva of aura strikes faster than any eye can follow, its hands numbered from one to ninety-nine.', effects: [{ k: 'damage', p: 2.2, range: 'mid' }, { k: 'speed', p: 1.6, dur: 3 }], conds: [{ k: 'charge', stars: 1, text: 'Every strike begins from a gesture of prayer.' }] },
-      { name: 'Zero Hand', kind: 'beam', cats: [[X, 0.7], [E, 0.3]], base: 1.35, desc: 'The Bodhisattva takes its target in its hands and fires every scrap of the user\'s remaining aura through it.', effects: [{ k: 'damage', p: 4.2, range: 'mid' }], conds: [{ k: 'aura_all', stars: 4, text: 'It uses all the aura he has left.' }, { k: 'charge', stars: 1, text: 'The target must be held in the hands first.' }] },
+      { name: 'Zero Hand', kind: 'beam', cats: [[X, 0.7], [E, 0.3]], base: 1.35, desc: 'The Bodhisattva takes its target in its hands and fires every scrap of the user\'s remaining aura through it.', effects: [{ k: 'damage', p: 3.2, range: 'mid' }], conds: [{ k: 'aura_all', stars: 4, text: 'It uses all the aura he has left.' }, { k: 'charge', stars: 1, text: 'The target must be held in the hands first.' }] },
     ],
     bio: 'The twelfth Chairman of the Hunter Association, over a hundred years old and still the strongest Nen user most people can name. He found his strength in years of thanking the mountain with ten thousand punches a day. He is bored, and dangerous because of it.',
   },
@@ -200,7 +200,7 @@ export const CANON_MAIN: CanonDef[] = [
     bio: 'Killua\'s grandfather, retired in name only. He has killed for money for fifty years and has never once killed for free.',
   },
   {
-    key: 'illumi_zoldyck', name: 'Illumi Zoldyck', short: 'Illumi', sex: 'm', born: 1975, home: 'kukuroo', nation: 'padokea', type: M, lvl: 80, pot: 0.45, cap: 92,
+    key: 'illumi_zoldyck', name: 'Illumi Zoldyck', short: 'Illumi', sex: 'm', born: 1975, home: 'kukuroo', nation: 'padokea', type: M, lvl: 84, pot: 0.45, cap: 92,
     body: [74, 85, 76, 80, 86, 80], mind: [84, 88, 88, 72, 45], major: true, role: 'assassin', weapon: 'needles', jenny: 800, infamy: 40,
     orgs: [['zoldyck', 2, { title: 'Eldest son', loyalty: 90 }]],
     p: { bravery: 75, aggression: 55, empathy: 5, honesty: 55, loyalty: 85, ambition: 55, curiosity: 20, discipline: 92, pride: 60, greed: 60, cruelty: 75, impulsivity: 10, sociability: 15, trust: 10, vengefulness: 40, whimsy: 25, composure: 97, romantic: 5 },
@@ -293,7 +293,7 @@ export const CANON_MAIN: CanonDef[] = [
 
   /* ================= The Phantom Troupe ================= */
   {
-    key: 'chrollo_lucilfer', name: 'Chrollo Lucilfer', short: 'Chrollo', sex: 'm', born: 1973, home: 'meteor', nation: 'none', type: S, lvl: 84, pot: 0.35, cap: 94,
+    key: 'chrollo_lucilfer', name: 'Chrollo Lucilfer', short: 'Chrollo', sex: 'm', born: 1973, home: 'meteor', nation: 'none', type: S, lvl: 88, pot: 0.35, cap: 94,
     body: [70, 80, 70, 72, 82, 82], mind: [94, 90, 92, 90, 92], major: true, role: 'thief', weapon: 'knife', jenny: 1500, infamy: 85, fame: 20,
     orgs: [['troupe', 1, { num: 0, title: 'Head', loyalty: 90 }]],
     p: { bravery: 82, aggression: 50, empathy: 30, honesty: 45, loyalty: 92, ambition: 60, curiosity: 90, discipline: 75, pride: 50, greed: 65, cruelty: 60, impulsivity: 40, sociability: 55, trust: 45, vengefulness: 35, whimsy: 60, composure: 92, romantic: 30 },
@@ -305,11 +305,14 @@ export const CANON_MAIN: CanonDef[] = [
       { name: 'Skill Hunter', kind: 'book', cats: [[S, 1]], base: 1.25, desc: 'The Bandit\'s Secret, a book that keeps every ability he steals. He must see the ability used, ask about it, have the owner touch the book\'s cover, all within the hour.', effects: [{ k: 'steal', p: 1.2 }], conds: [{ k: 'book_open', stars: 2, text: 'He needs a hand free to hold the book open while using a stolen ability.' }, { k: 'consent', stars: 2, text: 'Four separate conditions must be met within an hour of seeing the ability.' }] },
       { name: 'Fun Fun Cloth', kind: 'cloth', cats: [[C, 1]], base: 1, desc: 'A stolen cloth that shrinks anything wrapped in it to a fraction of its size.', effects: [{ k: 'bind', p: 1.3, dur: 2 }] },
       { name: 'Indoor Fish', kind: 'fish', cats: [[C, 1]], base: 1, desc: 'Stolen. Conjured carnivorous fish that eat a victim from inside a closed room without drawing blood.', effects: [{ k: 'summon', p: 1.3, dur: 4 }], conds: [{ k: 'close_range', stars: 1, text: 'Only in a closed space.' }] },
+      { name: 'Sun and Moon', kind: 'seal_bomb', cats: [[C, 0.5], [E, 0.5]], base: 1.1, desc: 'Stolen. Stamp a sun or a moon on a target; when the two meet, it explodes.', effects: [{ k: 'damage', p: 1.9, range: 'melee' }], conds: [{ k: 'touch_first', stars: 1, text: 'The stamp must be pressed onto the target.' }] },
+      { name: 'Black Voice', kind: 'antenna', cats: [[M, 1]], base: 1.0, desc: 'Stolen from Shalnark. An antenna stuck in a body makes it a puppet on a phone.', effects: [{ k: 'control', p: 1.4 }], conds: [{ k: 'touch_first', stars: 1, text: 'The antenna must go in.' }] },
+      { name: 'Convert Hands', kind: 'copy', cats: [[T, 1]], base: 0.95, desc: 'Stolen. Touch someone and become a copy of them, to fight as a decoy.', effects: [{ k: 'clone', p: 1.2 }, { k: 'stealth', p: 1 }] },
     ],
     bio: 'The Head of the Phantom Troupe. A reader, a thief and a mourner who holds requiems for the people his Spiders kill. The Spider comes first, even before him.',
   },
   {
-    key: 'hisoka_morow', name: 'Hisoka Morow', short: 'Hisoka', sex: 'm', born: 1971, home: 'arena', loc: 'zaban', nation: 'none', type: T, lvl: 80, pot: 0.45, cap: 92,
+    key: 'hisoka_morow', name: 'Hisoka Morow', short: 'Hisoka', sex: 'm', born: 1971, home: 'arena', loc: 'zaban', nation: 'none', type: T, lvl: 86, pot: 0.45, cap: 92,
     body: [76, 88, 74, 78, 90, 85], mind: [88, 85, 85, 92, 80], major: true, role: 'fighter', weapon: 'cards', jenny: 200, fame: 35, infamy: 50,
     orgs: [['troupe', 0, { num: 4, title: 'No. 4', secret: false, loyalty: 0 }]],
     p: { bravery: 95, aggression: 92, empathy: 5, honesty: 5, loyalty: 5, ambition: 40, curiosity: 85, discipline: 40, pride: 75, greed: 20, cruelty: 85, impulsivity: 55, sociability: 55, trust: 25, vengefulness: 30, whimsy: 98, composure: 90, romantic: 40 },
@@ -318,7 +321,7 @@ export const CANON_MAIN: CanonDef[] = [
     skills: { unarmed: 85, thrown: 90, deception: 92, perception: 85, gambling: 70 },
     rel: [['chrollo_lucilfer', 'rival', 30, -20, 95], ['illumi_zoldyck', 'friend', 30, 20, 75], ['machi', 'comrade', 20, 5, 50]],
     hatsu: [
-      { name: 'Bungee Gum', kind: 'gum', cats: [[T, 1]], base: 1.2, desc: 'Aura with the properties of both rubber and gum. It sticks to anything and snaps back.', effects: [{ k: 'bind', p: 1.5, dur: 2 }, { k: 'damage', p: 1.25, range: 'mid' }, { k: 'sense', p: 1.2, dur: 2 }] },
+      { name: 'Bungee Gum', kind: 'gum', cats: [[T, 1]], base: 1.2, desc: 'Aura with the properties of both rubber and gum. It sticks to anything and snaps back.', effects: [{ k: 'bind', p: 1.3, dur: 1 }, { k: 'damage', p: 1.1, range: 'mid' }] },
       { name: 'Texture Surprise', kind: 'surface', cats: [[T, 1]], base: 0.95, desc: 'A thin sheet of aura that copies any texture, to hide wounds or fake them.', effects: [{ k: 'stealth', p: 1.2 }] },
     ],
     bio: 'A magician and a killer who lives for fights with strong people, and spares the promising ones so they can ripen. He joined the Troupe as No. 4 by faking it, to get Chrollo alone.',
@@ -457,7 +460,7 @@ export const CANON_MAIN: CanonDef[] = [
 
   /* ================= Hunter Association ================= */
   {
-    key: 'pariston_hill', name: 'Pariston Hill', short: 'Pariston', sex: 'm', born: 1974, home: 'swardani', nation: 'mimbo', type: -1, lvl: 80, pot: 0.3, cap: 90,
+    key: 'pariston_hill', name: 'Pariston Hill', short: 'Pariston', sex: 'm', born: 1974, home: 'swardani', nation: 'mimbo', type: -1, lvl: 84, pot: 0.3, cap: 90,
     body: [60, 70, 60, 65, 75, 75], mind: [96, 85, 85, 92, 98], major: true, role: 'zodiac', jenny: 2500, fame: 55,
     orgs: [['ha', 2, { title: 'Vice-Chairman', loyalty: 20 }], ['zodiacs', 0, { num: 1, title: 'Rat', loyalty: 10 }]], license: { stars: 2, field: 'contract', year: 1994 },
     p: { bravery: 80, aggression: 35, empathy: 10, honesty: 5, loyalty: 10, ambition: 80, curiosity: 80, discipline: 60, pride: 55, greed: 50, cruelty: 70, impulsivity: 40, sociability: 95, trust: 20, vengefulness: 20, whimsy: 95, composure: 98, romantic: 20 },
@@ -468,7 +471,7 @@ export const CANON_MAIN: CanonDef[] = [
     bio: 'Netero\'s Vice-Chairman, a smiling Contract Hunter who loves the people he hurts and hurts the people he loves. Nobody has seen his ability. He enjoys losing more than winning, and he is very good at both.',
   },
   {
-    key: 'cheadle_yorkshire', name: 'Cheadle Yorkshire', short: 'Cheadle', sex: 'f', born: 1966, home: 'swardani', nation: 'mimbo', type: -1, lvl: 70, pot: 0.2, cap: 78,
+    key: 'cheadle_yorkshire', name: 'Cheadle Yorkshire', short: 'Cheadle', sex: 'f', born: 1966, home: 'swardani', nation: 'mimbo', type: -1, lvl: 78, pot: 0.2, cap: 78,
     body: [50, 60, 55, 60, 60, 65], mind: [96, 80, 85, 70, 70], role: 'zodiac', jenny: 300, fame: 40,
     orgs: [['ha', 1, { title: 'Dog', loyalty: 85 }], ['zodiacs', 0, { num: 11, title: 'Dog', loyalty: 85 }]], license: { stars: 3, field: 'virus', year: 1988 },
     p: { bravery: 65, aggression: 25, empathy: 60, honesty: 80, loyalty: 88, ambition: 60, discipline: 92, pride: 55, impulsivity: 15, sociability: 45, composure: 70, whimsy: 15 },
@@ -479,7 +482,7 @@ export const CANON_MAIN: CanonDef[] = [
     bio: 'A Triple Star Virus Hunter and the Zodiacs\' Dog. Precise, overworked, and the person most likely to read the bylaws aloud in a crisis.',
   },
   {
-    key: 'mizaistom_nana', name: 'Mizaistom Nana', short: 'Mizaistom', sex: 'm', born: 1966, home: 'swardani', nation: 'mimbo', type: -1, lvl: 74, pot: 0.2, cap: 80,
+    key: 'mizaistom_nana', name: 'Mizaistom Nana', short: 'Mizaistom', sex: 'm', born: 1966, home: 'swardani', nation: 'mimbo', type: -1, lvl: 80, pot: 0.2, cap: 80,
     body: [65, 70, 65, 70, 72, 75], mind: [90, 85, 85, 80, 70], role: 'zodiac', jenny: 300, fame: 35,
     orgs: [['ha', 1, { title: 'Ox', loyalty: 85 }], ['zodiacs', 0, { num: 2, title: 'Ox', loyalty: 85 }]], license: { stars: 2, field: 'crime', year: 1990 },
     p: { bravery: 75, aggression: 35, empathy: 50, honesty: 85, loyalty: 85, discipline: 90, composure: 85, sociability: 40, whimsy: 10 },

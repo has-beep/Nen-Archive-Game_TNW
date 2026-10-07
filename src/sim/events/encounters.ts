@@ -41,10 +41,15 @@ export function encounters(w: World) {
     const here = at(w, p.loc).filter((q) => isFree(q) && q.lastFight !== w.t && q !== p && q !== t)
     const sideA = [p, ...here.filter((q) => q.party != null && q.party === p.party && (q.rel[t.id]?.aff ?? 0) < 30).slice(0, 3)]
     const guards = here.filter((q) => !sideA.includes(q) && (q.dreams.some((d) => d.k === 'protect' && d.target === t.id && !d.done) || (q.act.k === 'guard' && q.act.with === t.id) || (q.party != null && q.party === t.party) || ((q.rel[t.id]?.aff ?? 0) > 70 && q.facets.bravery > 55 && (q.rel[p.id]?.aff ?? 0) < 20)))
-    const sideB = [t, ...guards.slice(0, 4)]
+    // A Queen or King of the ants is never alone: the colony comes for you.
+    const royal = t.species === 'ant' && (t.title === 'Queen' || t.title === 'King')
+    if (royal) for (const q of here) if (q.species === 'ant' && !sideA.includes(q) && !guards.includes(q) && q.orgs.some((m) => t.orgs.some((n) => n.org === m.org))) guards.push(q)
+    const sideB = [t, ...guards.slice(0, royal ? 6 : 4)]
+    const swarm = royal ? Math.min(14, 4 + Math.floor((((w.flags.ants as { pop?: number }) || {}).pop || 20) / 15)) : 0
+    const extrasB = swarm ? [{ name: 'Chimera Ant soldier', str: 72, agi: 66, tou: 72, skill: 55, weapon: 'claws', count: swarm }] : undefined
     // The odds, as the hunter sees them.
     const mult = vowMult(w, p, t)
-    const est = odds(sideA, sideB) * Math.min(1.6, mult)
+    const est = odds(sideA, sideB) * Math.min(1.6, mult) * (swarm ? 0.45 : 1)
     const desperate = p.mood.anger > 80 || p.flags.allIn === t.id || p.nen.vows.some((v) => v.person === t.id)
     if (est < 0.3 && !desperate && intent !== 'duel' && r.chance(0.8)) {
       if (p.major || p.owned) log(w, { type: 'misc', imp: 1, who: [p.id, t.id], at: p.loc, text: `${P(p)} finds ${P(t)}, sizes them up, and decides not today.` })
@@ -59,7 +64,7 @@ export function encounters(w: World) {
       p.attrs.str = Math.max(p.attrs.str, 120); p.attrs.agi = Math.max(p.attrs.agi, 110); p.attrs.tou = Math.max(p.attrs.tou, 110)
       log(w, { type: 'vow', imp: 5, who: [p.id, t.id], at: p.loc, text: `${P(p)} lets the vow take everything. The body that stands in front of ${P(t)} is the one ${P(p)} would have had after a lifetime of training.` })
     }
-    const out = fight(w, { a: sideA, b: sideB, intentA: intent, place: p.loc, why: p.plan.why, cause: p.plan.ev, ambush, record: p.major || t.major || p.owned || t.owned })
+    const out = fight(w, { a: sideA, b: sideB, extrasB, intentA: intent, place: p.loc, why: p.plan.why, cause: p.plan.ev, ambush, record: p.major || t.major || p.owned || t.owned })
     if (p.flags.allIn === t.id) { p.flags.allIn = 0; p.nen.burnedOut = true; p.nen.lvl = 5; p.hp = Math.max(1, hpMax(p) * 0.05) }
     // Contracts.
     const cid = p.plan?.data?.contract as number | undefined

@@ -50,6 +50,8 @@ export function tick(w: World): Id[] {
   calendarDaily(w)
   calamityDaily(w)
   if (weekly) {
+    // Danger passes when nothing renews it.
+    for (const pl of w.places) if (pl.hazard > 0 && w.t > pl.hazardUntil) { pl.hazard = 0; pl.hazardKind = undefined }
     nationsWeekly(w)
     orgsWeekly(w)
     storiesWeekly(w)

@@ -120,6 +120,8 @@ export interface F {
   controlledBy?: number
   poison: number
   revealed: Set<number>
+  /** Times this fighter has been bound: each hold is harder to land again. */
+  binds?: number
 }
 
 export interface Beat {
@@ -423,7 +425,11 @@ function strike(ctx: Ctx, a: F, b: F, o: { mult?: number; pBonus?: number; pierc
   if (o.hatsu && !b.known.has(o.hatsu.id)) A *= 1.15
   let D = defencePower(b)
   if (o.pierce) D *= 0.55
-  let dmg = (A * A) / (A + D) * 0.45 * (0.78 + r.next() * 0.44)
+  // Ordinary bodies break easily; aura-hardened ones are a long fight.
+  let dmg = (A * A) / (A + D) * (b.nen ? 0.2 : 0.42) * (0.78 + r.next() * 0.44)
+  // Without aura to guard it, a Nen user's body is only a body: the part of
+  // their toughness that came from aura is not there.
+  if (b.nen && b.p && (b.stance === 'zetsu' || b.stance === 'none' || b.sealed > 0 || b.zetsuAfter)) dmg *= Math.min(3, b.hpMax / bodyHp(b))
   if (b.shield) dmg *= b.shield.mult
   if (b.stance === 'ken' && !o.pierce) dmg *= 0.9
   if (ctx.o.intentA === 'spar' || ctx.o.arena) dmg *= 0.8
@@ -432,7 +438,7 @@ function strike(ctx: Ctx, a: F, b: F, o: { mult?: number; pBonus?: number; pierc
   b.taken += dmg
   a.dealt += dmg
   b.tookHit = true
-  if (!o.ranged && !o.fromSummon && d0 <= MELEE + 1) b.touched.add(a.i), a.touched.add(b.i)
+  if ((!o.ranged || wpn.key === 'needles') && !o.fromSummon && (d0 <= MELEE + 1 || wpn.key === 'needles')) b.touched.add(a.i), a.touched.add(b.i)
   if (wpn.poison && !b.nen) b.poison += 1
   if (wpn.poison && b.nen) b.poison += 0.3
   const fr = dmg / b.hpMax
@@ -449,6 +455,10 @@ function strike(ctx: Ctx, a: F, b: F, o: { mult?: number; pBonus?: number; pierc
   if (o.hatsu?.effects.some((e) => e.k === 'debt')) b.debt += dmg * 2.5
   const killed = checkDown(ctx, b, a)
   return { d: dmg, fr, wound, broke, part, killed }
+}
+
+function bodyHp(f: F): number {
+  return 40 + f.attrs.tou * 0.75 + (f.p ? f.p.attrs.endu * 0.35 : 20)
 }
 
 function tail(ctx: Ctx, res: HitRes, b?: F): string {
@@ -541,8 +551,10 @@ function canUse(ctx: Ctx, f: F, h: Hatsu, tgt: F | null): boolean {
   if (isEffect('speed') && f.speed && !isEffect('damage')) return false
   if (isEffect('sense') && f.sense && !isEffect('damage') && !isEffect('reveal')) return false
   if (isEffect('summon') && f.summons.length && !isEffect('damage')) return false
+  // Someone already held does not need holding again.
+  if ((isEffect('bind') || isEffect('seal')) && !isEffect('damage') && tgt && tgt.bound > 0) return false
   if (isEffect('heal') && !h.effects.some((e) => e.k === 'damage') && f.hp / f.hpMax > 0.6 && !allies(ctx, f).some((a) => a.hp / a.hpMax < 0.45)) return false
-  if (uses >= (isEffect('control') || isEffect('steal') || isEffect('contract') ? 2 : 4)) return false
+  if (uses >= (isEffect('control') || isEffect('steal') || isEffect('contract') || isEffect('heal') ? 2 : 4)) return false
   for (const c of h.conds) if (!condOk(ctx, f, h, c, tgt)) return false
   return true
 }
@@ -606,6 +618,8 @@ function hatsuScore(ctx: Ctx, f: F, h: Hatsu, tgt: F): number {
   }
   // Vows make an ability more tempting against its target.
   if (hasCondK(h, 'target_only')) s += 3
+  // A trick already shown is a trick the other side is ready for.
+  s -= 0.7 * (f.used[h.id] || 0)
   // Desperation, or a fighter who simply loves their ability.
   if (hp < 0.4) s += 1
   return s * (0.6 + ctx.r.next() * 0.8) * (0.7 + hatsuPower(ctx.w, f.p!, h) * 0.3)
@@ -740,8 +754,11 @@ function useHatsu(ctx: Ctx, f: F, h: Hatsu, tgt: F, charged: boolean) {
   const allSee = (k = h.id) => { for (const g of ctx.F) if (g.p && g !== f) g.known.add(k) }
   let said = false
   const say = (x: string, wt: number, fx: string) => { rec(f.i, x, wt, fx, tgt.i); said = true }
-  for (const e of h.effects) {
-    const P = e.p * pow
+  // One ability doing several things does each a little less well than an
+  // ability built for that one thing.
+  const spread = 1 / (1 + 0.3 * (h.effects.length - 1))
+  for (const [ei, e] of h.effects.entries()) {
+    const P = e.p * pow * (ei === 0 ? 1 : spread)
     switch (e.k) {
       case 'damage': {
         const area = e.range === 'area'
@@ -753,7 +770,9 @@ function useHatsu(ctx: Ctx, f: F, h: Hatsu, tgt: F, charged: boolean) {
         const targets = area ? enemies(ctx, f).filter((g) => dist(g, tgt) < 12).slice(0, 8) : [tgt]
         const parts: string[] = []
         for (const g of targets) {
-          const res = strike(ctx, f, g, { mult: 1.2 * P * aura * (area ? 0.8 : 1) * (charged ? 1.15 : 1), hatsu: h, ranged, area, pBonus: charged ? -0.04 : 0.02 })
+          // Ability power is compressed: a stronger ability hits much harder,
+          // not exponentially harder.
+          const res = strike(ctx, f, g, { mult: 1.2 * Math.pow(P, 0.65) * aura * (area ? 0.8 : 1) * (charged ? 1.15 : 1), hatsu: h, ranged, area, pBonus: charged ? -0.04 : 0.02 })
           if (res) parts.push(`${g.token} ${tail(ctx, res)}`)
         }
         if (parts.length) say(`${f.token} ${first ? 'unleashes' : 'uses'} ${quote(h)}. ${parts.join(' ')}${first ? '' : ''}`, 0.5 + targets.length * 0.1, area ? 'area' : 'hatsu')
@@ -761,11 +780,16 @@ function useHatsu(ctx: Ctx, f: F, h: Hatsu, tgt: F, charged: boolean) {
         break
       }
       case 'bind': {
-        const pb = 0.32 + 0.2 * P + (tgt.hp / tgt.hpMax < 0.5 ? 0.18 : 0) + (speedOf(f) - speedOf(tgt)) / 300 - (tgt.sense ? 0.15 : 0) + (first ? 0.12 : 0)
-        if (r.chance(Math.max(0.06, Math.min(0.93, pb)))) {
-          tgt.bound = Math.max(tgt.bound, (e.dur || 2) + (P > 2 ? 1 : 0))
+        // A hold is a contest of aura as much as of tricks, and nobody falls
+        // for the same one forever.
+        const pb = 0.3 + 0.18 * P + (tgt.hp / tgt.hpMax < 0.5 ? 0.15 : 0) + (speedOf(f) - speedOf(tgt)) / 300 - (tgt.sense ? 0.15 : 0) + (first ? 0.1 : 0)
+          + (auraPow(f) - auraPow(tgt)) / 300 - 0.14 * (tgt.binds || 0)
+        if (r.chance(Math.max(0.05, Math.min(0.9, pb)))) {
+          tgt.binds = (tgt.binds || 0) + 1
+          tgt.bound = Math.max(tgt.bound, (e.dur || 2) + (P > 2.2 ? 1 : 0) - (auraPow(tgt) > auraPow(f) * 1.3 ? 1 : 0))
           say(`${f.token} catches ${tgt.token} with ${quote(h)}. ${tgt.token} cannot move.`, 0.6, 'bind')
-          if (f.intent === 'capture' && P > 1.4) {
+          // A hold that also strips the aura (Chain Jail) is the end of it.
+          if ((f.intent === 'capture' || h.effects.some((x) => x.k === 'seal')) && P > 1.4 && r.chance(Math.min(0.9, 0.35 + 0.15 * P))) {
             tgt.outState = 'captured'
             rec(f.i, `${tgt.token} is held fast. It is over.`, 0.7, 'capture', tgt.i)
           }
@@ -782,24 +806,34 @@ function useHatsu(ctx: Ctx, f: F, h: Hatsu, tgt: F, charged: boolean) {
         break
       }
       case 'control': {
-        const pc = 0.18 + 0.2 * P + (f.attrs.int - tgt.attrs.int) / 300 + (tgt.hp / tgt.hpMax < 0.4 ? 0.22 : 0) + (tgt.bound > 0 ? 0.3 : 0) - (tgt.p ? tgt.p.mind.will / 600 : 0)
-        if (r.chance(Math.max(0.04, Math.min(0.85, pc)))) {
-          tgt.outState = 'controlled'
-          tgt.controlledBy = f.i
-          say(`${f.token} lands ${quote(h)}. ${tgt.token} stops. Their eyes go empty.`, 1, 'control')
+        // Taking over a mind is a contest of aura and will. Someone with far
+        // more aura than the user shakes it off; someone close to it loses a
+        // moment; only the weaker are truly taken.
+        const edge = (auraPow(f) - auraPow(tgt)) / Math.max(1, auraPow(f))
+        const pc = 0.18 + 0.2 * P + (f.attrs.int - tgt.attrs.int) / 300 + (tgt.hp / tgt.hpMax < 0.4 ? 0.22 : 0) + (tgt.bound > 0 ? 0.3 : 0) - (tgt.p ? tgt.p.mind.will / 600 : 0) + edge * 0.6
+        if (r.chance(Math.max(0.03, Math.min(0.85, pc)))) {
+          if (edge > -0.08 || !tgt.nen) {
+            tgt.outState = 'controlled'
+            tgt.controlledBy = f.i
+            say(`${f.token} lands ${quote(h)}. ${tgt.token} stops. Their eyes go empty.`, 1, 'control')
+          } else {
+            tgt.stun = Math.max(tgt.stun, 1)
+            say(`${f.token} lands ${quote(h)}. For a moment ${tgt.token} is somewhere else, and then their aura throws it off.`, 0.5, 'control')
+          }
         } else say(`${f.token} tries ${quote(h)} on ${tgt.token} and cannot make it take.`, 0.25, 'miss')
         break
       }
       case 'heal': {
         const who = f.hp / f.hpMax < 0.6 ? f : allies(ctx, f).sort((a, b) => a.hp / a.hpMax - b.hp / b.hpMax)[0] || f
-        const amt = Math.round(who.hpMax * 0.22 * Math.min(2, P))
+        // Mid-fight healing buys time; it does not undo a fight.
+        const amt = Math.round(who.hpMax * 0.12 * Math.min(1.6, P))
         who.hp = Math.min(who.hpMax, who.hp + amt)
         if (who.p) for (const x of who.p.wounds) if (x.t === w.t) { x.bleed = false; x.treated = true }
         say(`${f.token} uses ${quote(h)} on ${who === f ? 'themselves' : who.token} (+${amt}).`, 0.35, 'heal')
         break
       }
       case 'transform': {
-        f.transformed = { h, dur: e.dur || 4, p: 1 + 0.5 * P }
+        f.transformed = { h, dur: e.dur || 4, p: 1 + 0.3 * Math.pow(P, 0.8) }
         if (p.key === 'kurapika' || h.name === 'Emperor Time') p.flags.emperor = true
         say(`${f.token} ${first ? 'reveals' : 'uses'} ${quote(h)}. ${h.desc.split('.')[0]}.`, 0.5, 'transform')
         break

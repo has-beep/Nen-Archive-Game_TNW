@@ -48,6 +48,16 @@ console.log(`seed ${seed}: generated in ${tGen} ms, ${days} days in ${tRun} ms (
 console.log(`${living.length} alive, ${dead.length} dead, ${w.events.length} events, ${w.facts.length} facts, ${w.stories.filter((s) => s.status === 'active').length} active stories, ${printed} printed`)
 const canonDead = dead.filter((p) => p.canon).map((p) => `${p.name} (${p.death?.cause})`)
 console.log(`canon dead: ${canonDead.join('; ') || 'none'}`)
+// How people died, grouped: "killed by X in Y" becomes "killed in Y".
+const causes = new Map<string, number>()
+for (const p of w.people) if (!p.alive && p.death) {
+  const k = p.death.cause.replace(/killed by .*? in /, 'killed in ').replace(/^the final.*/, 'exam')
+  causes.set(k, (causes.get(k) || 0) + 1)
+}
+console.log(`deaths by cause: ${[...causes].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, n]) => `${k} ${n}`).join(', ')}`)
+const years = new Map<number, number>()
+for (const p of w.people) if (!p.alive && p.death) { const y = Math.floor(p.death.t / 365); years.set(y, (years.get(y) || 0) + 1) }
+console.log(`deaths by year: ${[...years].sort((a, b) => a[0] - b[0]).map(([y, n]) => `y${y}:${n}`).join(' ')}`)
 const top = living.slice().sort((a, b) => b.fame - a.fame).slice(0, 10).map((p) => `${p.name} ${Math.round(p.fame)}`)
 console.log(`most famous: ${top.join(', ')}`)
 if (follow) {

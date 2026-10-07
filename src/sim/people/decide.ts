@@ -131,9 +131,15 @@ export function think(w: World, p: Person, focus: boolean) {
     else if (p.role === 'fighter' || f.aggression > 65) opts.push(opt('travel', deficit(p, 'fight') * 0.5, 'Heading for Heavens Arena', { place: placeK(w, 'arena').id }))
   }
 
+  // A place that is killing people: anyone who is not there on purpose leaves.
+  if (place.hazard > 0.3 && p.species !== 'ant' && !(p.plan && p.plan.k !== 'exam' && (p.plan.place === p.loc || p.plan.k === 'hunt'))) {
+    const safe = nearby(w, p.loc).find((x) => x.hazard < 0.2 && !x.hidden)
+    if (safe) opts.push(opt('travel', 2.5 + place.hazard * 4 + f.bravery / -60 + (p.mood.fear / 30), `Getting out of ${place.name}`, { place: safe.id }))
+  }
+
   // Seeing the world: somewhere not too far, most of the time.
   if (deficit(p, 'adventure') > 0.3 && !p.flags.confined) {
-    const cand = nearby(w, p.loc).filter((x) => !x.hidden || p.home === x.id)
+    const cand = nearby(w, p.loc).filter((x) => (!x.hidden || p.home === x.id) && x.hazard < 0.3)
     const dest = cand[Math.min(cand.length - 1, Math.floor(r.next() * r.next() * cand.length))]
     if (dest) opts.push(opt('travel', (deficit(p, 'adventure') * 1.1 + f.curiosity / 400) * roam, `Travelling to ${dest.name}`, { place: dest.id }))
   }

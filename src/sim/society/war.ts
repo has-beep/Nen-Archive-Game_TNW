@@ -158,14 +158,17 @@ export function roseStrike(w: World, n: Nation, place: Id, cause?: Id) {
  * The Rose carried in a body (Netero's). Its bearer dies; the target takes the
  * blast, and then the poison, which no amount of aura can undo.
  */
-export function useRose(w: World, bearer: Person, target: Person, cause?: Id) {
+export function useRose(w: World, bearer: Person, target: Person, cause?: Id, remote = false) {
   const pl = w.places[bearer.loc]
-  const ev = log(w, { type: 'war', imp: 5, who: [bearer.id, target.id], at: bearer.loc, cause, text: `${P(bearer)} has lost. He smiles, and stops his own heart. The Poor Man's Rose inside him goes off, and ${L(pl)} disappears in a red flower of fire.` })
+  const ev = log(w, { type: 'war', imp: 5, who: [bearer.id, target.id], at: bearer.loc, cause, text: remote
+    ? `${P(bearer)} has lost. Far from ${L(pl)}, on open ground, he smiles and stops his own heart. The Poor Man's Rose inside him blooms into a red flower of fire, and ${P(target)} is at the centre of it.`
+    : `${P(bearer)} has lost. He smiles, and stops his own heart. The Poor Man's Rose inside him goes off, and ${L(pl)} disappears in a red flower of fire.` })
   delete bearer.flags.rose
   kill(w, bearer, { cause: 'setting off the Poor Man\'s Rose', ev, quiet: false })
   target.hp = Math.max(1, hpMax(target) * 0.08)
   target.conds.push({ k: 'contaminated', until: w.t + 400, p: 4, note: 'the Rose\'s poison' })
   remember(w, target, { k: 'rose', val: -60, str: 90, ev, text: 'Survived the Rose. The poison is inside now.' })
+  if (remote) return ev
   for (const p of at(w, bearer.loc).slice()) {
     if (p === target || !p.alive) continue
     if (p.nen.lvl > 75 && rng(w).chance(0.5)) p.conds.push({ k: 'contaminated', until: w.t + 300, p: 2.5, note: 'the Rose\'s poison' })

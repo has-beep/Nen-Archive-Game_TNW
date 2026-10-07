@@ -367,9 +367,12 @@ const HANDLERS: Partial<Record<DreamKind, Handler>> = {
       const mentor = Object.keys(p.rel).map((id) => w.people[+id]).find((q) => q?.alive && hasBond(p.rel[q.id], 'mentor'))
       if (mentor && mentor.loc === p.loc) return [{ k: 'train', u: 1.5 * pri(d), why: `Training under ${mentor.name}`, days: 5 }]
       if (mentor && !mentor.trip && (p.rel[mentor.id]?.aff ?? 0) > 10) return [go(w, p, mentor.loc, 1.3 * pri(d), `Going back to ${mentor.name} to train`)]
+      // Heavens Arena: where fighters learn Nen, and where a broke young
+      // Hunter can make money climbing floors (as Gon and Killua did).
       const arena = placeK(w, 'arena')
-      if (!p.nen.awake && p.loc !== arena.id && p.species === 'human') return [go(w, p, arena.id, 1.2 * pri(d), 'Heading to Heavens Arena, where people learn Nen')]
-      if (!p.nen.awake) return [{ k: 'arena', u: 1.1 * pri(d), why: 'Climbing Heavens Arena and looking for a teacher', days: 4 }, { k: 'train', u: 0.8 * pri(d), why: 'Training alone', days: 3 }]
+      const broke = p.jenny < 5 ? 1.4 : 1
+      if (!p.nen.awake && p.loc !== arena.id && p.species === 'human') return [go(w, p, arena.id, 1.6 * pri(d) * broke, 'Heading to Heavens Arena, where people learn Nen')]
+      if (!p.nen.awake) return [{ k: 'arena', u: 1.5 * pri(d) * broke, why: 'Climbing Heavens Arena and looking for a teacher', days: 4 }, { k: 'train', u: 0.9 * pri(d), why: 'Training alone', days: 3 }]
       return [{ k: 'train', u: 0.9 * pri(d), why: 'Mastering the basics properly', days: 5 }]
     }
     if (p.role !== 'master' && p.nen.lvl >= 55 && age(w, p) >= 25 && !p.orgs.some((m) => ['troupe', 'zoldyck', 'ants'].includes(w.orgs[m.org].key))) p.role = 'master'

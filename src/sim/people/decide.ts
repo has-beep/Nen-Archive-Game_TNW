@@ -118,7 +118,10 @@ export function think(w: World, p: Person, focus: boolean) {
 
   // Work and money.
   const pays = p.role !== 'child' && p.role !== 'student' && p.role !== 'prince'
-  if (pays) opts.push(opt('work', deficit(p, 'wealth') * 1.4 + deficit(p, 'purpose') * 0.7 + (p.jenny < 1 ? 1.5 : 0), workNote(w, p), { days: 3 + r.int(3) }))
+  // Being broke drives adults to work; a child or a Hunter living off the
+  // licence gets by.
+  const broke = p.jenny < 1 ? (age(w, p) >= 16 && !p.license ? 1.5 : 0.4) : 0
+  if (pays) opts.push(opt('work', deficit(p, 'wealth') * 1.4 + deficit(p, 'purpose') * 0.7 + broke, workNote(w, p), { days: 3 + r.int(3) }))
   if (place.features.includes('casino') || place.features.includes('market')) opts.push(opt('leisure', deficit(p, 'leisure') * 1.4 + f.whimsy / 400, place.features.includes('casino') ? 'At the tables' : 'Out in the city', { days: 1 }))
   if (place.features.includes('library')) opts.push(opt('study', deficit(p, 'learn') * 1.5, 'Reading in the library', { days: 3, focus: 'scholarship' }))
 

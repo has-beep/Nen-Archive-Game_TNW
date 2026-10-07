@@ -168,7 +168,11 @@ export function gossip(w: World, a: Person, b: Person): Fact | null {
     if (f.s === a.id && f.k !== 'ability') continue
     let s = f.imp * (0.5 + r.next())
     if (b.rel[f.s] || (f.o != null && b.rel[f.o])) s *= 2.2
-    if (f.secret > 0.6) s *= loose * 0.6
+    // Real secrets are told only to people one trusts, and not always then.
+    if (f.secret > 0.6) {
+      if ((a.rel[b.id]?.trust ?? 0) < 50 || !r.chance(1 - f.secret + loose * 0.3)) continue
+      s *= loose * 0.6
+    }
     if (f.k === 'member' && a.orgs.some((m) => m.org === f.o) && a.facets.loyalty > 40) s = 0
     if (s > bs) { bs = s; best = f }
   }

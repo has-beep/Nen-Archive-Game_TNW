@@ -90,7 +90,9 @@ export function earn(w: World, p: Person, days = 1) {
 }
 
 export function livingCost(p: Person, days = 1): number {
-  return (0.008 + Math.max(0, p.facets.greed - 50) / 5000 + (p.role === 'prince' || p.role === 'don' || p.role === 'ruler' ? 0.15 : 0)) * days
+  // A Hunter licence opens most doors for free; children live on very little.
+  const k = p.license ? 0.3 : p.role === 'child' ? 0.3 : 1
+  return (0.008 * k + Math.max(0, p.facets.greed - 50) / 5000 + (p.role === 'prince' || p.role === 'don' || p.role === 'ruler' ? 0.15 : 0)) * days
 }
 
 /* ================= Items ================= */

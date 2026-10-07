@@ -15,7 +15,7 @@ import { remember } from '../people/memory'
 import { change, hasBond, isKin, lovedOnes } from '../people/relations'
 import { onMemberDeath } from '../society/orgs'
 import { considerVengeance } from '../people/dreams'
-import { touchStories } from '../story/storyteller'
+import { endStory, touchStories } from '../story/storyteller'
 
 export interface KillOpts {
   cause: string
@@ -166,6 +166,10 @@ function mourn(w: World, dead: Person, by: Person | null, ev: Id) {
   for (const oid of orgs) {
     for (const m of members(w, oid)) if (m.rel[dead.id] && m.rel[dead.id].aff > 20) m.mood.anger = Math.min(100, m.mood.anger + 10)
   }
+  // A hunt for the dead ends with them.
+  const how = by ? `${dead.name} was killed by ${by.name}.` : `${dead.name} died before anyone could reach them.`
+  endStory(w, `revenge-on-${dead.id}`, ev, how)
+  endStory(w, `contract-on-${dead.id}`, ev, how)
   // Dreams that depended on the dead come to an end.
   for (const q of w.people) {
     if (!q.alive) continue

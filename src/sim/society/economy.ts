@@ -10,6 +10,7 @@ import { L, O, P, log } from '../history'
 import type { Contract, Id, Item, Person, World } from '../types'
 import { ROLES } from '../constants'
 import { rng } from '../world'
+import { endStory } from '../story/storyteller'
 
 export interface PostContract {
   k: Contract['k']
@@ -50,7 +51,10 @@ export function payContract(w: World, c: Contract, to: Person, ev?: Id) {
 
 export function contractsTick(w: World) {
   for (const c of w.contracts) {
-    if ((c.status === 'open' || c.status === 'taken') && w.t > c.expires) c.status = 'void'
+    if ((c.status === 'open' || c.status === 'taken') && w.t > c.expires) {
+      c.status = 'void'
+      if (c.k === 'assassination' && c.target != null && c.ev != null) endStory(w, `contract-on-${c.target}`, c.ev, 'The contract lapsed.')
+    }
   }
   if (w.contracts.length > 600) w.contracts = w.contracts.filter((c) => c.status === 'open' || c.status === 'taken' || w.t - c.posted < 400)
 }

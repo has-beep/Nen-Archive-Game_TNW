@@ -369,7 +369,7 @@ function raidDay(w: World, orgId: Id, op: OrgOp) {
     for (const p of raiders.filter((x) => x.alive)) postContract(w, { k: 'bounty', client: -mafia.id - 1, target: p.id, reward: 150 + p.fame * 2, why: 'for robbing the auction', cause: out.ev })
     const head = w.people[org.leader]
     if (head?.alive) postContract(w, { k: 'assassination', client: -mafia.id - 1, target: head.id, reward: 2000, why: 'for robbing the auction', cause: out.ev })
-    startStory(w, 'vendetta', 'The Mafia against the Troupe', raiders.slice(0, 5).map((p) => p.id), out.ev, `mafia-troupe-${dateOf(w.epoch, w.t).y}`)
+    startStory(w, 'vendetta', 'The Mafia against the Troupe', raiders.slice(0, 5).map((p) => p.id), out.ev, 'mafia-troupe')
     // The raiders' faces are known now.
     for (const p of raiders) { const f = addFact(w, { k: 'member', s: p.id, o: orgId, secret: 0.2, imp: 3, text: `${p.name} is a member of the ${org.name}.`, ev: out.ev }); for (const q of at(w, place.id)) learn(w, q, f) }
   } else {

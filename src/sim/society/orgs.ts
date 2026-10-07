@@ -352,7 +352,7 @@ function zoldyckWeekly(w: World, org: Org) {
     pick.plan = { k: 'hunt', target: t.id, until: w.t + 90, why: 'on a contract', data: { intent: 'kill', contract: c.id } }
     const ev = log(w, { type: 'faction', imp: t.major || t.fame > 40 ? 3 : 2, who: [pick.id, t.id], orgs: [org.id], at: pick.loc, cause: c.ev, text: `The Zoldyck family accepts a contract on ${P(t)} for ${Math.round(c.reward)} million Jenny. ${P(pick)} takes the job.` })
     c.ev = ev
-    startStory(w, 'contract', `A Zoldyck contract on ${t.name}`, [pick.id, t.id], ev, `contract-${c.id}`)
+    startStory(w, 'contract', `A Zoldyck contract on ${t.name}`, [pick.id, t.id], ev, `contract-on-${t.id}`)
   }
 }
 

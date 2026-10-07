@@ -617,7 +617,14 @@ export function considerVengeance(w: World, q: Person, killer: Person | null, de
   if (killer) setBond(w, q, killer, 'nemesis')
   const text = killer ? `${P(q)} swears to kill ${wide && org ? `every member of the ${O(org)}` : P(killer)} for ${P(dead)}.` : `${P(q)} swears to find whoever killed ${P(dead)}.`
   const e2 = log(w, { type: 'vow', imp: q.major || dead.major ? 3 : 2, who: killer ? [q.id, killer.id, dead.id] : [q.id, dead.id], at: q.loc, cause: ev, text })
-  if (killer) startStory(w, 'vendetta', `${q.name} against ${killer.name}`, [q.id, killer.id], e2, `revenge-${q.id}-${killer.id}`)
+  // Everyone hunting the same killer shares one storyline.
+  if (killer) {
+    const st = startStory(w, 'vendetta', `${q.name} against ${killer.name}`, [q.id, killer.id], e2, `revenge-on-${killer.id}`)
+    if (!st.who.includes(q.id)) st.who.push(q.id)
+    const hunters = st.who.filter((id) => id !== killer.id)
+    if (hunters.length >= 3) st.title = `The hunt for ${killer.name}`
+    else if (hunters.length === 2) st.title = `${w.people[hunters[0]].name} and ${w.people[hunters[1]].name} against ${killer.name}`
+  }
   // The strongest grief binds Nen itself.
   if (killer && q.nen.awake && score > 0.62 && !q.nen.vows.length && ((q.rel[dead.id]?.fam ?? 0) >= 60 || isKin(q, dead.id)) && r.chance(0.18)) {
     const allIn = love > 0.9 && q.facets.impulsivity > 70 && q.facets.vengefulness > 70 && power(killer) > power(q) * 1.8 && q.nen.pot > 1.2

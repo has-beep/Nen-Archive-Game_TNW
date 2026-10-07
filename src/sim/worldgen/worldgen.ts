@@ -23,6 +23,7 @@ import { develop } from '../nen/nen'
 import { log } from '../history'
 import { makeItem } from '../society/economy'
 import { announceExam } from '../society/calendar'
+import { initDarkContinent } from '../society/expeditions'
 import { seedDreams } from '../people/dreams'
 
 export interface WorldOptions {
@@ -37,7 +38,7 @@ export interface WorldOptions {
   archive?: CanonDef[]
 }
 
-export const DEFAULT_LAWS: Laws = { lethality: 0.5, vowPower: 1, growth: 1, healing: 1, postmortem: true, wars: true, plotArmor: false, romance: true, calamities: true }
+export const DEFAULT_LAWS: Laws = { lethality: 0.5, vowPower: 1, growth: 1, healing: 1, postmortem: true, wars: true, plotArmor: false, romance: true, calamities: true, disasters: true, expeditions: true }
 
 export function createWorld(o: WorldOptions): World {
   const seed = o.seed >>> 0
@@ -119,6 +120,9 @@ export function createWorld(o: WorldOptions): World {
 
   for (const p of alive(w)) if (p.nen.awake && p.nen.lvl >= 34 && !p.nen.hatsu.length && !p.nen.destined?.length && p.species === 'human') develop(w, p, { quiet: true })
   silentBonds(w)
+  // The Dark Continent: five known calamities, and some nobody knows about.
+  initDarkContinent(w)
+  reindex(w)
   // Things already in motion.
   announceExam(w, 1999)
   if (o.ants !== 'no' && (o.ants === 'yes' || r.chance(0.75))) w.flags.antQueenDay = 330 + r.int(330)

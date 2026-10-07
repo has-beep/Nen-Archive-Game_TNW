@@ -8,7 +8,7 @@
  */
 import { BODY_PARTS, PART_INFO, type BodyPart } from '../constants'
 import { L, P, log } from '../history'
-import type { Id, Person, Wound, World } from '../types'
+import type { CondKind, Id, Person, Wound, World } from '../types'
 import { hpMax, isFree, nenUsable, woundMods } from './person'
 import { at, rng } from '../world'
 import { change } from './relations'
@@ -153,20 +153,28 @@ export function bodyTick(w: World, p: Person): string | null {
     if (p.hp <= 0) return 'bleeding'
   }
   // Poison and illness
+  // Illnesses and injuries that work over days. Treatment can end them;
+  // some need a Nen healer, and Zobae needs something nobody inside the
+  // lake has.
+  const care = p.conds.length ? careAt(w, p) : null
   for (const c of p.conds) {
-    if (c.k === 'poison' && c.until > w.t) {
-      p.hp -= hm * 0.04 * (c.p ?? 1) * (nenUsable(p) ? 0.6 : 1)
-      if (p.hp <= 0) return c.note || 'poison'
+    if (c.until <= w.t && c.until >= 0) continue
+    const cd = COND_HARM[c.k]
+    if (!cd) continue
+    p.hp -= hm * cd.hp * (c.p ?? 1) * (nenUsable(p) ? cd.nen : 1)
+    if (care && cd.need > 0 && care.lvl >= cd.need && (!cd.nenCure || care.nen) && r.chance(0.12 * Math.min(2, care.lvl / cd.need))) {
+      c.until = w.t
+      if (p.major || p.owned) log(w, { type: 'heal', imp: 1, who: care.by ? [care.by.id, p.id] : [p.id], at: p.loc, text: `${care.by ? `${P(care.by)} cures ${P(p)} of` : `${P(p)} recovers from`} ${cd.name}.` })
+      continue
     }
-    if (c.k === 'disease' && c.until > w.t) {
-      p.hp -= hm * 0.015 * (c.p ?? 1)
-      if (p.hp <= 0) return c.note || 'illness'
-    }
-    if (c.k === 'contaminated' && c.until > w.t) {
-      p.hp -= hm * 0.02 * (c.p ?? 1)
-      if (p.hp <= 0) return 'the Rose\'s poison'
+    if (p.hp <= 0) {
+      // Zobae will not let its survivors die. That is the horror of it.
+      if (p.conds.some((x) => x.k === 'undying')) { p.hp = 1; continue }
+      return c.note && COND_DEATH[c.note] ? COND_DEATH[c.note] : cd.death
     }
   }
+  // Radiation does its worst years later.
+  if (p.conds.some((c) => c.k === 'radiation' && c.until > w.t) && r.chance(0.0004 * (p.conds.find((c) => c.k === 'radiation')!.p ?? 1))) return 'radiation sickness'
   // Natural recovery
   if (!bleeding && p.hp < hm) {
     const worst = m.worst
@@ -192,4 +200,25 @@ export function bodyTick(w: World, p: Person): string | null {
   // Timed conditions expire
   p.conds = p.conds.filter((c) => c.until > w.t || c.until < 0)
   return null
+}
+
+/** Daily harm from each lasting condition, how much aura helps, and what
+ *  level of care cures it (0: nothing does). */
+const COND_HARM: Partial<Record<CondKind, { hp: number; nen: number; need: number; nenCure?: boolean; name: string; death: string }>> = {
+  poison: { hp: 0.04, nen: 0.6, need: 1.5, name: 'the poison', death: 'poison' },
+  disease: { hp: 0.015, nen: 0.8, need: 2, name: 'the illness', death: 'illness' },
+  contaminated: { hp: 0.02, nen: 0.9, need: 0, name: 'the Rose\'s poison', death: 'the Rose\'s poison' },
+  burned: { hp: 0.012, nen: 0.6, need: 1, name: 'the burns', death: 'burns' },
+  frostbite: { hp: 0.008, nen: 0.6, need: 1, name: 'the frostbite', death: 'the cold' },
+  radiation: { hp: 0.003, nen: 0.95, need: 3.5, nenCure: true, name: 'radiation sickness', death: 'radiation sickness' },
+  zobae: { hp: 0.06, nen: 0.85, need: 0, name: 'Zobae', death: 'the Zobae disease' },
+}
+const COND_DEATH: Record<string, string> = { plague: 'the plague', ash: 'the ash', fire: 'burns', rose: 'the Rose\'s poison', zobae: 'the Zobae disease' }
+
+/** The cure-all from the Dark Continent: one dose ends any condition. */
+export function cureAll(w: World, p: Person): string[] {
+  const gone = p.conds.filter((c) => COND_HARM[c.k] || c.k === 'curse' || c.k === 'undying' || c.k === 'kept' || c.k === 'frenzied').map((c) => c.k)
+  p.conds = p.conds.filter((c) => !gone.includes(c.k))
+  p.hp = hpMax(p)
+  return gone
 }

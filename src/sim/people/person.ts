@@ -287,5 +287,5 @@ export function condOf(p: Person, k: string) {
 }
 
 export function isFree(p: Person): boolean {
-  return p.alive && !p.trip && !p.conds.some((c) => c.k === 'jailed' || c.k === 'captive' || c.k === 'unconscious' || c.k === 'controlled')
+  return p.alive && !p.trip && !p.conds.some((c) => c.k === 'jailed' || c.k === 'captive' || c.k === 'unconscious' || c.k === 'controlled' || c.k === 'kept')
 }

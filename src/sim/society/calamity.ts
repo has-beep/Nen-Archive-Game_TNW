@@ -23,6 +23,7 @@ import { remember } from '../people/memory'
 import { startStory, endStory } from '../story/storyteller'
 import { addFact, learn } from '../people/knowledge'
 import { useRose } from './war'
+import { addHazard } from './disasters'
 
 interface AntState {
   t0: number
@@ -150,10 +151,7 @@ function antsDaily(w: World, s: AntState) {
   // Wherever ants are, the place is deadly, and people who can leave do.
   for (const a of members(w, org.id)) {
     if (a.trip) continue
-    const pl = w.places[a.loc]
-    pl.hazard = Math.max(pl.hazard, 0.6)
-    pl.hazardKind = pl.hazardKind === 'rose' ? 'rose' : 'ants'
-    pl.hazardUntil = Math.max(pl.hazardUntil, w.t + 20)
+    addHazard(w, w.places[a.loc], 'ants', 0.6, { ev: s.ev })
   }
   // Ants roam and hunt.
   for (const a of members(w, org.id)) {

@@ -198,7 +198,7 @@ export function think(w: World, p: Person, focus: boolean) {
   // Choose.
   let best: Option | null = null, bs = -1e9
   for (const o of opts) {
-    if (o.k === 'travel' && p.flags.confined) continue
+    if (o.k === 'travel' && (p.flags.confined || p.flags.castaway || p.flags.onExp != null && place.kind === 'beyond')) continue
     let s = o.u * (0.8 + r.next() * 0.4)
     if (whisper && o.k === whisper) s *= 1.8
     if (s > bs) { bs = s; best = o }

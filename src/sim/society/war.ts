@@ -11,6 +11,7 @@
  * is banned by treaty; the stock that already existed was never destroyed.
  * Using it is a crime against the whole world, and the world answers.
  */
+import { addHazard } from './disasters'
 import { L, N, P, log } from '../history'
 import type { Front, Id, Nation, Person, War, World } from '../types'
 import { alive, at, nationK, rng, touch } from '../world'
@@ -135,9 +136,6 @@ export function roseStrike(w: World, n: Nation, place: Id, cause?: Id) {
   n.arsenal.roses--
   const deadK = Math.round(pl.pop * (0.3 + r.next() * 0.3))
   pl.pop -= deadK
-  pl.hazard = 1
-  pl.hazardUntil = w.t + 3650
-  pl.hazardKind = 'rose'
   const ev = log(w, { type: 'war', imp: 5, nats: [n.id, pl.nation], at: place, cause, text: `The ${N(n)} drops a Poor Man's Rose on ${L(pl)}. About ${(deadK * 1000).toLocaleString('en-US')} people die in the blast. The poison will kill more for years.` })
   for (const p of at(w, place).slice()) {
     const strong = p.nen.awake && p.nen.lvl > 80 && r.chance(0.4)
@@ -151,6 +149,8 @@ export function roseStrike(w: World, n: Nation, place: Id, cause?: Id) {
   }
   n.stability = Math.max(0, n.stability - 20)
   touch(w)
+  addHazard(w, pl, 'rose', 1, { ev })
+  addHazard(w, pl, 'fire', 0.9, { ev })
   return ev
 }
 
@@ -174,9 +174,8 @@ export function useRose(w: World, bearer: Person, target: Person, cause?: Id, re
     if (p.nen.lvl > 75 && rng(w).chance(0.5)) p.conds.push({ k: 'contaminated', until: w.t + 300, p: 2.5, note: 'the Rose\'s poison' })
     else kill(w, p, { cause: 'the Poor Man\'s Rose', ev, quiet: !p.major })
   }
-  pl.hazard = 0.8
-  pl.hazardUntil = w.t + 2000
-  pl.hazardKind = 'rose'
+  addHazard(w, pl, 'rose', 0.8, { ev })
+  addHazard(w, pl, 'fire', 0.7, { ev })
   pl.pop *= 0.7
   return ev
 }

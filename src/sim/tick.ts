@@ -28,6 +28,8 @@ import { encounters } from './events/encounters'
 import { storiesWeekly } from './story/storyteller'
 import { playerDaily } from './player/player'
 import { isFree } from './people/person'
+import { disastersDaily, hazardsDaily } from './society/disasters'
+import { expeditionsDaily } from './society/expeditions'
 
 export function focusSet(w: World): Set<Id> {
   const s = new Set<Id>()
@@ -50,8 +52,6 @@ export function tick(w: World): Id[] {
   calendarDaily(w)
   calamityDaily(w)
   if (weekly) {
-    // Danger passes when nothing renews it.
-    for (const pl of w.places) if (pl.hazard > 0 && w.t > pl.hazardUntil) { pl.hazard = 0; pl.hazardKind = undefined }
     nationsWeekly(w)
     orgsWeekly(w)
     storiesWeekly(w)
@@ -59,6 +59,9 @@ export function tick(w: World): Id[] {
   }
   electionTick(w)
   warsDaily(w)
+  disastersDaily(w)
+  hazardsDaily(w)
+  expeditionsDaily(w)
   const focus = focusSet(w)
   const order = r.shuffle(alive(w).slice())
   for (const p of order) dayFor(w, p, focus.has(p.id), weekly)

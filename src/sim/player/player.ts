@@ -124,6 +124,9 @@ function resolve(w: World, c: Crossroad, k: string, auto: boolean) {
     case 'confess': p.flags.confess = ctx.target; break
     case 'spare': p.flags.spare = 1; break
     case 'kill': p.flags.spare = 0; break
+    case 'exp_join': case 'exp_decline': case 'exp_push': case 'exp_return':
+      EXP.resolveExpeditionChoice(w, p, k, ctx)
+      break
   }
   if (!auto) remember(w, p, { k: 'choice', val: 5, str: 30, text: `Chose: ${c.options.find((o) => o.k === k)?.label}.` })
 }
@@ -252,3 +255,5 @@ export function fate(w: World, k: keyof typeof FATE_COST, a: Record<string, numb
 }
 
 import * as ORGS from '../society/orgs'
+
+import * as EXP from '../society/expeditions'

@@ -228,17 +228,13 @@ function sailing(w: World, exp: Expedition) {
     exp.status = 'arrived'
     const aboard = alive(w).filter((p) => p.loc === ship.id)
     const ev = log(w, { type: 'politics', imp: 5, who: aboard.slice(0, 10).map((p) => p.id), at: dc.id, cause: exp.ev, text: `The Black Whale reaches the New Continent. What waits there has been waiting a very long time.` })
-    // Those who go ashore face the calamities.
-    for (const p of aboard) {
-      if (!(p.dreams.some((d) => d.k === 'explore') || p.key === 'beyond_netero') ) continue
-      travel(w, p, dc.id, true)
-      if (r.chance(0.25 * (w.laws.lethality / 0.5)) && power(p) < 90) kill(w, p, { cause: 'the Dark Continent', how: `${P(p)} goes ashore on the Dark Continent and is not seen again.`, ev })
-      else { p.fame += 30; for (const d of p.dreams) if (d.k === 'explore') d.done = w.t }
-    }
+    // Those who came to explore go ashore, and the Dark Continent begins.
+    if (w.dc) kakinLanding(w, ev)
     endStory(w, 'expedition', ev, 'The ship reached the New Continent.')
     exp.status = 'over'
   }
 }
 
 import * as HATSU from '../nen/hatsu'
+import { kakinLanding } from './expeditions'
 export { develop, joinOrg }

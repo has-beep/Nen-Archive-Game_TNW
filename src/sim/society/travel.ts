@@ -6,8 +6,9 @@
  * reaches the Dark Continent without an expedition, or a death wish.
  */
 import { L, P, log } from '../history'
+import { addHazard } from './disasters'
 import type { Id, Person, Trip, World } from '../types'
-import { placeK, touch } from '../world'
+import { placeK, rng, touch } from '../world'
 
 const AIR_KM = 2600, SEA_KM = 900, LAND_KM = 450, WING_KM = 1400
 
@@ -28,6 +29,8 @@ export function route(w: World, p: Person, to: Id): Route {
   const from = p.loc
   const A = w.places[from], B = w.places[to]
   const d = km(w, from, to)
+  // Out there, there is no way home except the way an expedition goes.
+  if (A.features.includes('dc') && !B.features.includes('dc')) return { days: 0, mode: 'sea', cost: 0, ok: false, why: 'There is no way back from here but the way you came.' }
   if (B.features.includes('dc')) {
     if (!p.flags.expedition) return { days: 0, mode: 'sea', cost: 0, ok: false, why: 'The Dark Continent is closed by treaty.' }
     return { days: Math.max(20, Math.ceil(d / SEA_KM)), mode: 'sea', cost: 0, ok: true }
@@ -78,6 +81,12 @@ export function arrive(w: World, p: Person) {
   const tr = p.trip
   p.trip = undefined
   touch(w, p)
+  // Sick travellers bring their sickness with them.
+  const sick = p.conds.find((c) => (c.k === 'disease' && c.note === 'plague' || c.k === 'zobae') && c.until > w.t)
+  if (sick && w.places[p.loc].kind !== 'beyond' && !(w.places[p.loc].hazards || []).some((h) => h.k === 'plague') && rng(w).chance(sick.k === 'zobae' ? 0.35 : 0.18)) {
+    addHazard(w, w.places[p.loc], 'plague', 0.3, { cal: sick.k === 'zobae' ? 'zobae' : undefined })
+    log(w, { type: 'disaster', imp: sick.k === 'zobae' ? 4 : 2, who: [p.id], at: p.loc, text: `${sick.k === 'zobae' ? 'Zobae' : 'The plague'} reaches ${L(w.places[p.loc])}, carried in by a traveller.` })
+  }
   if (p.owned && tr.t1 - tr.t0 > 1) log(w, { type: 'arrive', imp: 0, who: [p.id], at: p.loc, text: `${P(p)} arrives in ${L(w.places[p.loc])}.` })
 }
 

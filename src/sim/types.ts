@@ -124,6 +124,7 @@ export interface Wound {
 export type CondKind =
   | 'poison' | 'disease' | 'curse' | 'sealed' | 'jailed' | 'captive' | 'controlled' | 'pregnant' | 'exhausted'
   | 'unconscious' | 'hiding' | 'mourning' | 'contaminated' | 'aged' | 'blind' | 'zobae' | 'debt' | 'judgment' | 'wish'
+  | 'burned' | 'frostbite' | 'radiation' | 'frenzied' | 'kept' | 'undying'
 
 export interface Cond {
   k: CondKind
@@ -356,16 +357,32 @@ export interface Place {
   hospital: number
   features: string[]
   owner?: Id
-  /** Poor Man's Rose fallout or a calamity, 0..1, and when it clears. */
+  /** The worst hazard here, 0..1, kept for quick checks; the full list is
+   *  in `hazards`. */
   hazard: number
   hazardUntil: number
   hazardKind?: string
+  hazards?: Hazard[]
+  /** What the place was like before a disaster, so it can recover. */
+  base?: { pop: number; wealth: number }
   unrest: number
   /** Who controls it in a war, if not its own nation. */
   occupier?: Id
   hidden?: boolean
   region: string
   desc?: string
+}
+
+export interface Hazard {
+  k: import('../data/hazards').HazardKind
+  sev: number
+  t: number
+  /** The disaster or event that caused it. */
+  ev?: Id
+  /** For calamities: which one. */
+  cal?: string
+  /** Helpers who have worked on it, for credit. */
+  helped?: number
 }
 
 export interface NationRel {
@@ -623,6 +640,10 @@ export interface Laws {
   plotArmor: boolean
   romance: boolean
   calamities: boolean
+  /** Earthquakes, floods, fires, plagues. */
+  disasters?: boolean
+  /** Expeditions beyond the lake, legal and otherwise. */
+  expeditions?: boolean
 }
 
 export interface World {
@@ -650,6 +671,64 @@ export interface World {
   counters: Record<string, number>
   /** Events created during the current tick, for the interface to pick up. */
   fresh: Id[]
+  /** The Dark Continent as this world has it: canonical calamities plus the
+   *  unrecorded ones it rolled, and what humanity has learned. */
+  dc?: DcState
+  /** Every expedition beyond the lake, past and present. */
+  expeditions?: ExpeditionRun[]
   nextFact: number
   nextItem: number
+}
+
+export interface DcState {
+  calamities: import('../data/darkcontinent').CalamityDef[]
+  regions: import('../data/darkcontinent').RegionDef[]
+  /** Calamity key to the fact that describes it, once anyone knows. */
+  facts: Record<string, Id>
+  /** Hope key to how many have been brought back in this world's history. */
+  hopes: Record<string, number>
+  /** How many illegal attempts the V5 know about, and how many returned. */
+  attempts: number
+  returned: number
+}
+
+export type ExpeditionStage = 'gathering' | 'crossing' | 'exploring' | 'returning' | 'home' | 'lost' | 'turned_back' | 'caught'
+
+export interface ExpeditionRun {
+  id: Id
+  name: string
+  leader: Id
+  members: Id[]
+  /** Who paid. */
+  sponsor?: { nation?: Id; org?: Id; person?: Id }
+  legal: boolean
+  port: Id
+  stage: ExpeditionStage
+  t0: number
+  /** When the current stage's next step is due. */
+  next: number
+  /** What they are after: a calamity's region, or nothing in particular. */
+  goal?: string
+  /** Where they are on the Dark Continent, as a region key. */
+  region?: string
+  /** Weeks spent beyond the lake. */
+  weeks: number
+  supplies: number
+  morale: number
+  /** Hope keys found, and calamity keys met. */
+  found: string[]
+  met: string[]
+  /** Calamities someone is carrying home without knowing. */
+  carried: string[]
+  dead: Id[]
+  ev: Id
+  /** Final outcome line, once over. */
+  end?: string
+  endT?: number
+  /** When the ship reaches the far side, and whether the halfway point has passed. */
+  arrive?: number
+  halfway?: boolean
+  /** Weeks of walking left before they reach their goal. */
+  walk?: number
+  flags?: Record<string, number>
 }

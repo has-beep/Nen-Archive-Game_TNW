@@ -20,6 +20,7 @@ const days = +arg('days', '365')
 const minImp = +arg('imp', '3')
 const followKey = arg('follow', '')
 const quiet = args.includes('--quiet')
+const types = arg('type', '') ? new Set(arg('type', '').split(',')) : null
 
 const t0 = Date.now()
 const w = createWorld({ seed })
@@ -34,6 +35,7 @@ for (let d = 0; d < days; d++) {
     const e = w.events.find((x) => x.id === id)
     if (!e) continue
     const mine = follow && e.who.includes(follow.id)
+    if (types && !types.has(e.type)) continue
     if (e.imp >= minImp || (mine && e.imp >= 1)) {
       console.log(`${dateStr(w.epoch, e.t).padEnd(18)} [${e.imp}${mine ? '*' : ' '}] ${plain(w, e.text)}`)
       printed++

@@ -60,14 +60,16 @@ export function Rich({ text, names }: { text: string; names?: Names }) {
     const id = +m[2]
     const ref = names?.[k]?.[id]
     const kind = k === 'p' ? 'person' : k === 'o' ? 'org' : k === 'n' ? 'nation' : 'place'
-    // A real link, so a long name wraps with the sentence instead of
-    // jumping to the next line as a block.
+    // An inline link, so a long name wraps with the sentence instead of
+    // jumping to the next line as a block. No href: a middle-click must not
+    // open a second copy of the game in a new tab.
     out.push(
-      <a key={i++} href="#" className={`lk lk-${k}${ref?.dead ? ' dead' : ''}`}
+      <span key={i++} role="link" tabIndex={0} className={`lk lk-${k}${ref?.dead ? ' dead' : ''}`}
         style={ref?.c ? ({ '--lc': ref.c, color: k === 'p' ? undefined : `color-mix(in srgb, ${ref.c} 55%, var(--fg))`, textDecorationColor: k === 'p' ? undefined : ref.c } as CSSProperties) : undefined}
-        onClick={(e) => { e.preventDefault(); open({ k: kind, id }) }}>
+        onClick={() => open({ k: kind, id })}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open({ k: kind, id }) } }}>
         {ref?.n ?? 'someone'}
-      </a>,
+      </span>,
     )
     last = m.index! + m[0].length
   }

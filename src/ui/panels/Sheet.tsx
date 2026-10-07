@@ -15,8 +15,8 @@ function Hexagon({ cat, type }: { cat: number[]; type: number }) {
   const ring = (r: number) => CAT_ORDER.map((_, i) => pt(i, r).join(',')).join(' ')
   const shape = CAT_ORDER.map((c, i) => pt(i, R * Math.max(0.04, (cat[c] || 0) / 100)).join(',')).join(' ')
   return (
-    <div className="hex" style={{ width: '100%', maxWidth: 300, margin: '0 auto' }}>
-      <svg viewBox="0 0 300 224" style={{ width: '100%', display: 'block' }} role="img" aria-label="Nen category proficiency">
+    <div className="hex" style={{ width: '100%', maxWidth: 360, margin: '0 auto' }}>
+      <svg viewBox="-30 0 360 224" style={{ width: '100%', display: 'block' }} role="img" aria-label="Nen category proficiency">
         {[0.33, 0.66, 1].map((k) => <polygon key={k} points={ring(R * k)} fill="none" stroke="var(--border)" />)}
         <polygon points={shape} fill={NEN_COLOR[type] + '44'} stroke={NEN_COLOR[type]} strokeWidth="2" strokeLinejoin="round" />
         {CAT_ORDER.map((c, i) => {

@@ -113,9 +113,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .tabs button { border: 0; background: transparent; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--muted-fg); white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
 .tabs button[aria-selected="true"] { background: var(--muted); color: var(--fg); font-weight: 600; }
 .panel > .tabs { gap: 0; padding: 0 6px; }
-.panel > .tabs button { flex: 1 0 auto; justify-content: center; padding: 11px 8px 9px; border-radius: 0; margin-bottom: -1px; border-bottom: 2px solid transparent; }
+.panel > .tabs button { flex: 1 0 auto; justify-content: center; padding: 11px 8px 9px; border-radius: 0; border-bottom: 2px solid transparent; }
 .panel > .tabs button[aria-selected="true"] { background: none; color: var(--fg); font-weight: 700; border-bottom-color: var(--primary); }
-.tabs.subtabs { align-self: flex-start; display: inline-flex; gap: 2px; padding: 3px; border: 0; border-radius: 9px; background: var(--muted); overflow: visible; }
+.tabs.subtabs { align-self: flex-start; display: inline-flex; gap: 2px; padding: 3px; border: 0; border-radius: 9px; background: var(--muted); max-width: 100%; overflow-x: auto; }
 .tabs.subtabs button { padding: 4px 11px; font-size: 12.5px; border-radius: 6px; }
 .tabs.subtabs button[aria-selected="true"] { background: var(--card); color: var(--fg); font-weight: 600; box-shadow: 0 0 0 1px var(--border), inset 0 -2px 0 var(--nen, var(--primary)); }
 .scroll { overflow-y: auto; min-height: 0; flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
@@ -203,8 +203,8 @@ button.lk { border: 0; background: none; padding: 0; font: inherit; font-weight:
 .arena .f .nm.s1 { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .arena .f.out { opacity: 0.4; filter: grayscale(1); }
 .arena .f.act .disc { outline: 2px solid var(--gold); outline-offset: 3px; }
-.arena .result { position: absolute; left: 50%; top: 12px; translate: -50% 0; text-align: center; background: var(--card); border: 1px solid var(--border); border-top: 3px solid var(--c, var(--muted-fg)); border-radius: 8px; padding: 6px 16px; box-shadow: var(--shadow); font-size: 12px; color: var(--muted-fg); }
-.arena .result b { display: block; font-size: 17px; color: var(--fg); }
+.result { width: fit-content; max-width: 100%; margin: 0 auto; text-align: center; background: var(--card); border: 1px solid var(--border); border-top: 3px solid var(--c, var(--muted-fg)); border-radius: 8px; padding: 6px 16px; box-shadow: var(--shadow); font-size: 12px; color: var(--muted-fg); }
+.result b { display: block; font-size: 17px; color: var(--fg); }
 .arena .f.hit .disc { animation: hit 0.35s; }
 @keyframes hit { 30% { transform: scale(1.35); } }
 .fx-line { position: absolute; height: 2px; background: var(--accent); transform-origin: 0 50%; opacity: 0.7; }
@@ -238,7 +238,16 @@ button.lk { border: 0; background: none; padding: 0; font: inherit; font-weight:
   .brand span { display: none; }
   .clock { order: 5; width: 100%; }
   .clock .speed { flex: 1; }
-  .clock .speed button { flex: 1; padding: 7px 4px; }
+  .clock .speed button { flex: 1; padding: 7px 2px; white-space: nowrap; }
+  .clock .date { padding-inline: 10px; font-size: 13px; }
   .legend { display: none; }
   .panel > .tabs button { padding: 10px 6px 8px; }
+}
+@media (max-width: 340px) {
+  .clock { flex-wrap: wrap; border-radius: 12px; }
+  .clock .date, .clock .speed { flex: 1 0 100%; }
+  .clock .date { justify-content: center; border-right: 0; border-bottom: 1px solid var(--border); }
+}
+@media (max-width: 380px) {
+  .panel > .tabs { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0; }
 }

@@ -63,6 +63,8 @@ export function MapView({ places, frame }: Props) {
     const cv = ref.current, el = wrap.current
     if (!cv || !el) return
     const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    const base = document.createElement('canvas')
+    let baseKey = ''
     let raf = 0
     const draw = () => {
       anim.current = (anim.current + 1) % 100000
@@ -81,39 +83,52 @@ export function MapView({ places, frame }: Props) {
       const water = tok('--water'), deep = tok('--water-deep'), land = tok('--land'), edge = tok('--land-edge'), line = tok('--land-line'),
         text = tok('--map-text'), seaText = tok('--map-sea-text'), region = tok('--map-region'), ring = tok('--dot-ring'),
         gold = tok('--gold'), accent = tok('--accent'), card = tok('--card'), fg = tok('--fg'), bg = tok('--bg')
-      g.fillStyle = water
-      g.fillRect(0, 0, W, H)
-      // The lake's rim: past it, the Dark Continent.
-      g.fillStyle = deep
-      for (let i = 0; i < 6; i++) {
-        g.beginPath(); g.ellipse(X(MAP_W / 2), Y(MAP_H / 2), (MAP_W / 2 + 6 + i * 6) * s, (MAP_H / 2 + 6 + i * 6) * s, 0, 0, Math.PI * 2)
-        g.globalAlpha = 0.16; g.fill()
-      }
-      g.globalAlpha = 1
-      // Coasts, traced from the official map, drawn like an old atlas: an
-      // engraved waterline a few pixels off every shore, the land, its lakes,
-      // then the inked coast.
-      const { land: LP, water: WP } = paths()
-      g.save()
-      g.setTransform(dpr * s, 0, 0, dpr * s, dpr * (W / 2 - cx * s), dpr * (H / 2 - cy * s))
-      g.lineJoin = 'round'
-      g.globalAlpha = 0.3; g.strokeStyle = edge; g.lineWidth = 13 / s; g.stroke(LP)
-      g.globalAlpha = 1; g.strokeStyle = water; g.lineWidth = 10 / s; g.stroke(LP)
-      g.fillStyle = land; g.fill(LP)
-      g.fillStyle = water; g.fill(WP)
-      g.strokeStyle = edge; g.lineWidth = Math.max(1.2, Math.min(2, s / 8)) / s; g.stroke(LP); g.stroke(WP)
-      g.restore()
-      // Mountains as little ridges.
-      g.strokeStyle = line
-      g.lineWidth = 1.2
-      for (const [mx, my, mr] of MOUNTAINS) {
-        for (let k = 0; k < Math.round(mr * 2.2); k++) {
-          const a = k * 2.4, d = (k % 3) * mr * 0.25
-          const px = X(mx + Math.cos(a) * d), py = Y(my + Math.sin(a) * d)
-          const h = Math.max(3, s * 0.7)
-          g.beginPath(); g.moveTo(px - h, py + h * 0.6); g.lineTo(px, py - h * 0.6); g.lineTo(px + h, py + h * 0.6); g.stroke()
+      // The still part of the map (water, coasts, mountains) only changes
+      // when the camera, the size or the theme does, so it is drawn once into
+      // its own canvas and copied each frame.
+      const key = `${cx},${cy},${s},${cv.width},${cv.height},${dpr},${water},${deep},${land},${edge},${line}`
+      if (key !== baseKey) {
+        baseKey = key
+        if (base.width !== cv.width || base.height !== cv.height) { base.width = cv.width; base.height = cv.height }
+        const b = base.getContext('2d')!
+        b.setTransform(dpr, 0, 0, dpr, 0, 0)
+        b.fillStyle = water
+        b.fillRect(0, 0, W, H)
+        // The lake's rim: past it, the Dark Continent.
+        b.fillStyle = deep
+        for (let i = 0; i < 6; i++) {
+          b.beginPath(); b.ellipse(X(MAP_W / 2), Y(MAP_H / 2), (MAP_W / 2 + 6 + i * 6) * s, (MAP_H / 2 + 6 + i * 6) * s, 0, 0, Math.PI * 2)
+          b.globalAlpha = 0.16; b.fill()
+        }
+        b.globalAlpha = 1
+        // Coasts, traced from the official map, drawn like an old atlas: an
+        // engraved waterline a few pixels off every shore, the land, its
+        // lakes, then the inked coast.
+        const { land: LP, water: WP } = paths()
+        b.save()
+        b.setTransform(dpr * s, 0, 0, dpr * s, dpr * (W / 2 - cx * s), dpr * (H / 2 - cy * s))
+        b.lineJoin = 'round'
+        b.globalAlpha = 0.3; b.strokeStyle = edge; b.lineWidth = 13 / s; b.stroke(LP)
+        b.globalAlpha = 1; b.strokeStyle = water; b.lineWidth = 10 / s; b.stroke(LP)
+        b.fillStyle = land; b.fill(LP)
+        b.fillStyle = water; b.fill(WP)
+        b.strokeStyle = edge; b.lineWidth = Math.max(1.2, Math.min(2, s / 8)) / s; b.stroke(LP); b.stroke(WP)
+        b.restore()
+        // Mountains as little ridges.
+        b.strokeStyle = line
+        b.lineWidth = 1.2
+        for (const [mx, my, mr] of MOUNTAINS) {
+          for (let k = 0; k < Math.round(mr * 2.2); k++) {
+            const a = k * 2.4, d = (k % 3) * mr * 0.25
+            const px = X(mx + Math.cos(a) * d), py = Y(my + Math.sin(a) * d)
+            const h = Math.max(3, s * 0.7)
+            b.beginPath(); b.moveTo(px - h, py + h * 0.6); b.lineTo(px, py - h * 0.6); b.lineTo(px + h, py + h * 0.6); b.stroke()
+          }
         }
       }
+      g.setTransform(1, 0, 0, 1, 0, 0)
+      g.drawImage(base, 0, 0)
+      g.setTransform(dpr, 0, 0, dpr, 0, 0)
       // Hazards: a soft pulse, sized by severity.
       if (frame) {
         const pulse = calm ? 1 : 0.85 + Math.sin(anim.current / 9) * 0.15
@@ -224,7 +239,7 @@ export function MapView({ places, frame }: Props) {
         label(t, x, y, lb.sea ? seaText : region, lb.sea ? water : land)
       }
       g.font = 'italic 600 10px Inter, system-ui, sans-serif'
-      for (const bn of beyondNames) label(bn.t, bn.px, bn.py, gold, water)
+      for (const bn of beyondNames) label(bn.t, bn.px, bn.py, text, water)
       // The person you follow: a glow in their Nen colour, a ringed bead and a name tag.
       if (me) {
         const px = X(me.x), py = Y(me.y)

@@ -233,7 +233,10 @@ export function FightReplay({ eventId, onClose }: { eventId: number; onClose: ()
   // The stage is 5:2, so it shows `span` tiles across and 0.4 * span down.
   const span = Math.max(10, Math.max(...xs) - Math.min(...xs) + 7, (Math.max(...ys) - Math.min(...ys) + 5) * 2.5)
   const P = ([x, y]: [number, number]): [number, number] => [Math.max(6, Math.min(94, 50 + (x - mx) / span * 100)), Math.max(14, Math.min(84, 50 + (y - my) / (span * 0.4) * 100))]
+  // Name the people who won, not every palace guard and ant soldier beside them.
   const won = f.names.map((_, k) => k).filter((k) => f.sides[k] === f.winner)
+  const named = won.filter((k) => f.people[k] >= 0)
+  const winners = named.length ? `${named.slice(0, 3).map(name).join(' & ')}${named.length > 3 ? ` and ${named.length - 3} more` : ''} win${named.length > 1 ? '' : 's'}` : `The ${f.winner === 0 ? 'attackers' : 'defenders'} win`
   const draw = f.how === 'standoff' || f.winner < 0
   const HOW: Record<string, string> = { down: 'Knocked down', fled: 'The other side ran', yield: 'They gave up', points: 'On points', standoff: 'Neither side could finish it' }
   return (
@@ -255,8 +258,8 @@ export function FightReplay({ eventId, onClose }: { eventId: number; onClose: ()
             </div>
           )
         })}
-        {end && <div className="result" style={{ '--c': draw ? 'var(--muted-fg)' : colour(won[0]) } as CSSProperties}><b>{draw ? 'Standoff' : `${won.map(name).join(' & ')} win${won.length > 1 ? '' : 's'}`}</b>{HOW[f.how] ?? ''} · {f.exchanges} exchanges</div>}
       </div>
+      {end && <div className="result" style={{ '--c': draw ? 'var(--muted-fg)' : colour(named[0] ?? won[0]) } as CSSProperties}><b>{draw ? 'Standoff' : winners}</b>{HOW[f.how] ?? ''} · {f.exchanges} exchanges</div>}
       <div className="beat"><Rich text={b.x} names={d.names} /></div>
       <div className="hpbars">
         {f.names.map((_, k) => (

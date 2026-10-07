@@ -23,10 +23,6 @@ function paths() {
   return PATHS
 }
 
-function css(name: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888'
-}
-
 export function MapView({ places, frame }: Props) {
   const { open, follow } = useNav()
   const ref = useRef<HTMLCanvasElement>(null)
@@ -66,6 +62,7 @@ export function MapView({ places, frame }: Props) {
   useEffect(() => {
     const cv = ref.current, el = wrap.current
     if (!cv || !el) return
+    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
     let raf = 0
     const draw = () => {
       anim.current = (anim.current + 1) % 100000
@@ -78,7 +75,12 @@ export function MapView({ places, frame }: Props) {
       const W = r.width, H = r.height
       const X = (x: number) => (x - cx) * s + W / 2
       const Y = (y: number) => (y - cy) * s + H / 2
-      const water = css('--water'), deep = css('--water-deep'), shallow = css('--water-shallow'), land = css('--land'), edge = css('--land-edge'), line = css('--land-line'), text = css('--map-text'), seaText = css('--map-sea-text'), beyond = css('--beyond')
+      // Every colour this frame needs, read in one go.
+      const cs = getComputedStyle(document.documentElement)
+      const tok = (n: string) => cs.getPropertyValue(n).trim() || '#888'
+      const water = tok('--water'), deep = tok('--water-deep'), land = tok('--land'), edge = tok('--land-edge'), line = tok('--land-line'),
+        text = tok('--map-text'), seaText = tok('--map-sea-text'), region = tok('--map-region'), ring = tok('--dot-ring'),
+        gold = tok('--gold'), accent = tok('--accent'), card = tok('--card'), fg = tok('--fg'), bg = tok('--bg')
       g.fillStyle = water
       g.fillRect(0, 0, W, H)
       // The lake's rim: past it, the Dark Continent.
@@ -88,16 +90,18 @@ export function MapView({ places, frame }: Props) {
         g.globalAlpha = 0.16; g.fill()
       }
       g.globalAlpha = 1
-      // Coasts, traced from the official map: a pale shallows halo, the land, its lakes, then the inked shore.
+      // Coasts, traced from the official map, drawn like an old atlas: an
+      // engraved waterline a few pixels off every shore, the land, its lakes,
+      // then the inked coast.
       const { land: LP, water: WP } = paths()
       g.save()
       g.setTransform(dpr * s, 0, 0, dpr * s, dpr * (W / 2 - cx * s), dpr * (H / 2 - cy * s))
       g.lineJoin = 'round'
-      g.strokeStyle = shallow; g.globalAlpha = 0.55; g.lineWidth = 7 / s; g.stroke(LP)
-      g.globalAlpha = 1
+      g.globalAlpha = 0.3; g.strokeStyle = edge; g.lineWidth = 13 / s; g.stroke(LP)
+      g.globalAlpha = 1; g.strokeStyle = water; g.lineWidth = 10 / s; g.stroke(LP)
       g.fillStyle = land; g.fill(LP)
       g.fillStyle = water; g.fill(WP)
-      g.strokeStyle = edge; g.lineWidth = Math.max(1, Math.min(2.2, s / 8)) / s; g.stroke(LP); g.stroke(WP)
+      g.strokeStyle = edge; g.lineWidth = Math.max(1.2, Math.min(2, s / 8)) / s; g.stroke(LP); g.stroke(WP)
       g.restore()
       // Mountains as little ridges.
       g.strokeStyle = line
@@ -110,18 +114,9 @@ export function MapView({ places, frame }: Props) {
           g.beginPath(); g.moveTo(px - h, py + h * 0.6); g.lineTo(px, py - h * 0.6); g.lineTo(px + h, py + h * 0.6); g.stroke()
         }
       }
-      // Region names.
-      g.textAlign = 'center'
-      for (const lb of REGION_LABELS) {
-        g.font = `${lb.sea ? 'italic ' : ''}600 ${Math.max(9, Math.min(13, s * 0.9))}px Inter, system-ui, sans-serif`
-        g.fillStyle = lb.sea ? seaText : text
-        g.globalAlpha = 0.55
-        g.fillText(lb.sea ? lb.n : lb.n.toUpperCase(), X(lb.x), Y(lb.y))
-      }
-      g.globalAlpha = 1
       // Hazards: a soft pulse, sized by severity.
       if (frame) {
-        const pulse = 0.85 + Math.sin(anim.current / 9) * 0.15
+        const pulse = calm ? 1 : 0.85 + Math.sin(anim.current / 9) * 0.15
         for (const h of frame.hazards) {
           const rad = (1.2 + h.sev * 2.8) * s * pulse
           const gr = g.createRadialGradient(X(h.x), Y(h.y), 0, X(h.x), Y(h.y), rad)
@@ -130,27 +125,34 @@ export function MapView({ places, frame }: Props) {
           g.beginPath(); g.arc(X(h.x), Y(h.y), rad, 0, Math.PI * 2); g.fill()
         }
         // War fronts.
-        g.strokeStyle = css('--accent'); g.lineWidth = 2
+        g.strokeStyle = accent; g.lineWidth = 2
         for (const f of frame.fronts) {
           const px = X(f.x), py = Y(f.y), k = Math.max(4, s * 0.6)
           g.beginPath(); g.moveTo(px - k, py - k); g.lineTo(px + k, py + k); g.moveTo(px + k, py - k); g.lineTo(px - k, py + k); g.stroke()
         }
       }
-      // Places: dots first, then names, biggest first, each tried right, left, above and below,
-      // and dropped if it would cover a name already drawn. Zooming in makes room.
+      // Place dots, and quiet marks for the Dark Continent past the edges.
       const boxes: [number, number, number, number][] = []
       const free = (b: [number, number, number, number]) => b[0] >= 0 && b[2] <= W && b[1] >= 0 && b[3] <= H && !boxes.some((o) => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1])
       const named: { p: PlaceDot; px: number; py: number; city: boolean }[] = []
+      const beyondNames: { t: string; px: number; py: number }[] = []
       for (const p of places) {
         if (p.hidden && !p.beyond && p.kind !== 'ship') continue
         const px = X(p.x), py = Y(p.y)
         if (px < -40 || py < -40 || px > W + 40 || py > H + 40) continue
         const city = p.kind === 'city'
         if (p.beyond) {
-          g.fillStyle = beyond; g.strokeStyle = css('--accent'); g.lineWidth = 1.5
-          g.beginPath(); g.arc(px, py, 5, 0, Math.PI * 2); g.fill(); g.stroke()
-          g.fillStyle = text; g.font = `600 10px Inter, system-ui, sans-serif`; g.textAlign = 'center'
-          g.fillText(p.known ? p.name : '?', px, py - 9)
+          if (p.known) {
+            g.fillStyle = gold; g.strokeStyle = card; g.lineWidth = 1.5
+            g.beginPath(); g.arc(px, py, 4.5, 0, Math.PI * 2); g.fill(); g.stroke()
+            beyondNames.push({ t: p.name, px, py: py + 14 })
+          } else {
+            g.setLineDash([2, 2]); g.strokeStyle = seaText; g.lineWidth = 1.2
+            g.beginPath(); g.arc(px, py, 6, 0, Math.PI * 2); g.stroke(); g.setLineDash([])
+            g.fillStyle = seaText; g.font = 'italic 700 9px Inter, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'
+            g.fillText('?', px, py + 0.5); g.textBaseline = 'alphabetic'
+          }
+          boxes.push([px - 7, py - 7, px + 7, py + 7])
           continue
         }
         g.fillStyle = city ? text : edge
@@ -158,10 +160,44 @@ export function MapView({ places, frame }: Props) {
         boxes.push([px - 4, py - 4, px + 4, py + 4])
         if (s > 5 || city) named.push({ p, px, py, city })
       }
+      // People: crisp beads with a thin ink ring, one path per colour so
+      // hundreds of them stay cheap. The followed person is drawn last.
+      let me: Frame['dots'][number] | null = null
+      if (frame) {
+        const small = new Map<string, Path2D>(), big = new Map<string, Path2D>()
+        const rings = new Path2D(), owned = new Path2D()
+        for (const d of frame.dots) {
+          if (d.f) { me = d; continue }
+          const px = X(d.x), py = Y(d.y)
+          if (px < -10 || py < -10 || px > W + 10 || py > H + 10) continue
+          const r0 = d.big ? 3 : 2
+          const bucket = d.big ? big : small
+          let path = bucket.get(d.c)
+          if (!path) { path = new Path2D(); bucket.set(d.c, path) }
+          path.moveTo(px + r0, py); path.arc(px, py, r0, 0, Math.PI * 2)
+          if (d.big) { rings.moveTo(px + r0, py); rings.arc(px, py, r0, 0, Math.PI * 2) }
+          if (d.own) { owned.moveTo(px + r0 + 2.5, py); owned.arc(px, py, r0 + 2.5, 0, Math.PI * 2) }
+        }
+        g.globalAlpha = 0.85
+        for (const [c, path] of small) { g.fillStyle = c; g.fill(path) }
+        g.globalAlpha = 1
+        for (const [c, path] of big) { g.fillStyle = c; g.fill(path) }
+        g.strokeStyle = ring; g.lineWidth = 1; g.stroke(rings)
+        g.strokeStyle = gold; g.lineWidth = 1.5; g.stroke(owned)
+      }
+      // Labels go on top of the crowd, each with a knock-out halo so it
+      // reads on land, sea, coast or people alike.
+      const label = (t: string, x: number, y: number, fill: string, halo: string) => {
+        g.lineJoin = 'round'; g.lineWidth = 3; g.strokeStyle = halo; g.strokeText(t, x, y)
+        g.fillStyle = fill; g.fillText(t, x, y)
+      }
+      // Place names, biggest first, each tried right, left, above and below,
+      // and dropped if it would cover a name already drawn. Zooming in makes room.
       named.sort((a, b) => Number(b.city) - Number(a.city) || Number(a.p.kind === 'ship') - Number(b.p.kind === 'ship') || b.p.pop - a.p.pop)
       g.textBaseline = 'middle'
+      const drawn = new Set<string>()
       for (const { p, px, py, city } of named) {
-        g.font = `${city ? 600 : 500} ${city ? 11 : 10}px Inter, system-ui, sans-serif`
+        g.font = city ? '600 11px Inter, system-ui, sans-serif' : 'italic 500 10px Inter, system-ui, sans-serif'
         const tw = g.measureText(p.name).width, th = city ? 13 : 12
         const tries: [number, number, CanvasTextAlign][] = [[px + 6, py, 'left'], [px - 6, py, 'right'], [px, py - 10, 'center'], [px, py + 11, 'center']]
         for (const [tx, ty, al] of tries) {
@@ -169,25 +205,46 @@ export function MapView({ places, frame }: Props) {
           const b: [number, number, number, number] = [x0 - 1, ty - th / 2, x0 + tw + 1, ty + th / 2]
           if (!free(b)) continue
           boxes.push(b)
-          g.fillStyle = text; g.textAlign = al
-          g.fillText(p.name, tx, ty)
+          g.textAlign = al
+          label(p.name, tx, ty, city ? text : region, land)
+          drawn.add(p.name.toLowerCase())
           break
         }
       }
-      g.textBaseline = 'alphabetic'
-      // People.
-      if (frame) {
-        for (const d of frame.dots) {
-          const px = X(d.x), py = Y(d.y)
-          if (px < -10 || py < -10 || px > W + 10 || py > H + 10) continue
-          const rad = d.f ? 5 : d.big ? 3 : 1.8
-          g.fillStyle = d.c
-          g.globalAlpha = d.big || d.f || d.own ? 1 : 0.75
-          g.beginPath(); g.arc(px, py, rad, 0, Math.PI * 2); g.fill()
-          g.globalAlpha = 1
-          if (d.own || d.f) { g.strokeStyle = d.f ? css('--fg') : css('--gold'); g.lineWidth = 2; g.beginPath(); g.arc(px, py, rad + 3, 0, Math.PI * 2); g.stroke() }
+      // Nation and sea names fill whatever room is left.
+      g.textAlign = 'center'
+      for (const lb of REGION_LABELS) {
+        if (drawn.has(lb.n.toLowerCase())) continue
+        const t = lb.sea ? lb.n : lb.n.toUpperCase()
+        g.font = lb.sea ? `italic 500 ${Math.max(10, Math.min(13, s))}px Inter, system-ui, sans-serif` : `600 ${Math.max(9, Math.min(12, s * 0.85))}px Inter, system-ui, sans-serif`
+        const tw = g.measureText(t).width, x = X(lb.x), y = Y(lb.y)
+        const b: [number, number, number, number] = [x - tw / 2 - 2, y - 7, x + tw / 2 + 2, y + 7]
+        if (!free(b)) continue
+        boxes.push(b)
+        label(t, x, y, lb.sea ? seaText : region, lb.sea ? water : land)
+      }
+      g.font = 'italic 600 10px Inter, system-ui, sans-serif'
+      for (const bn of beyondNames) label(bn.t, bn.px, bn.py, gold, water)
+      // The person you follow: a glow in their Nen colour, a ringed bead and a name tag.
+      if (me) {
+        const px = X(me.x), py = Y(me.y)
+        const R = 15 + (calm ? 0 : Math.sin(anim.current / 14) * 3)
+        const gr = g.createRadialGradient(px, py, 4, px, py, R)
+        gr.addColorStop(0, me.c + '99'); gr.addColorStop(1, me.c + '00')
+        g.fillStyle = gr; g.beginPath(); g.arc(px, py, R, 0, Math.PI * 2); g.fill()
+        g.fillStyle = card; g.beginPath(); g.arc(px, py, 7, 0, Math.PI * 2); g.fill()
+        g.strokeStyle = fg; g.lineWidth = 2; g.stroke()
+        g.fillStyle = me.c; g.beginPath(); g.arc(px, py, 4.5, 0, Math.PI * 2); g.fill()
+        const nm = frame?.names.p[me.id]?.n
+        if (nm) {
+          g.font = '600 11px Inter, system-ui, sans-serif'
+          const w = g.measureText(nm).width + 14
+          const x = Math.max(w / 2 + 4, Math.min(W - w / 2 - 4, px))
+          g.fillStyle = fg; g.beginPath(); g.roundRect(x - w / 2, py - 30, w, 18, 9); g.fill()
+          g.fillStyle = bg; g.textAlign = 'center'; g.fillText(nm, x, py - 21)
         }
       }
+      g.textBaseline = 'alphabetic'
       raf = requestAnimationFrame(draw)
     }
     raf = requestAnimationFrame(draw)
@@ -231,7 +288,7 @@ export function MapView({ places, frame }: Props) {
             return
           }
           const { best, p } = pick(e.clientX, e.clientY)
-          setTip(best ? { x: p.lx + 12, y: p.ly + 12, t: best.n } : null)
+          setTip(best?.n ? { x: p.lx + 12, y: p.ly + 12, t: best.n } : null)
         }}
         onPointerUp={(e) => {
           const d = drag.current
@@ -259,7 +316,7 @@ export function MapView({ places, frame }: Props) {
       </div>
       {tip && <div className="map-tip" style={{ left: tip.x, top: tip.y }}>{tip.t}</div>}
       <div className="legend">
-        {[['Enhancer', 'var(--enh)'], ['Transmuter', 'var(--tra)'], ['Emitter', 'var(--emi)'], ['Conjurer', 'var(--con)'], ['Manipulator', 'var(--man)'], ['Specialist', 'var(--spe)'], ['No Nen', '#94a3b8']].map(([n, c]) => (
+        {[['Enhancer', 'var(--enh)'], ['Transmuter', 'var(--tra)'], ['Conjurer', 'var(--con)'], ['Specialist', 'var(--spe)'], ['Manipulator', 'var(--man)'], ['Emitter', 'var(--emi)'], ['No Nen', '#94a3b8'], ['Chimera Ant', '#b91c1c']].map(([n, c]) => (
           <span key={n}><i className="dot" style={{ background: c }} />{n}</span>
         ))}
       </div>

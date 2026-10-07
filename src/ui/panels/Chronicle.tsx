@@ -13,7 +13,7 @@ export function EventList({ events, names, max = 200 }: { events: EventLite[]; n
           <span className="t">
             <Rich text={e.text} names={names} />
             {e.cause != null && <button className="more" onClick={() => open({ k: 'event', id: e.id })}>why?</button>}
-            {e.fight && <button className="more" onClick={() => openFight(e.id)}>watch</button>}
+            {e.fight && <button className="more watch" onClick={() => openFight(e.id)}>▶ watch</button>}
           </span>
         </div>
       ))}

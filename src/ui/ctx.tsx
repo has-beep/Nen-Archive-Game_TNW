@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { Names } from '../sim/api/views'
 import { client } from './client'
 import type { Request } from '../sim/api/engine'
@@ -60,15 +60,31 @@ export function Rich({ text, names }: { text: string; names?: Names }) {
     const id = +m[2]
     const ref = names?.[k]?.[id]
     const kind = k === 'p' ? 'person' : k === 'o' ? 'org' : k === 'n' ? 'nation' : 'place'
+    // A real link, so a long name wraps with the sentence instead of
+    // jumping to the next line as a block.
     out.push(
-      <button key={i++} className={`lk${ref?.dead ? ' dead' : ''}`} style={ref?.c ? { color: k === 'p' ? undefined : ref.c, borderBottomColor: ref.c } : undefined} onClick={() => open({ k: kind, id })}>
+      <a key={i++} href="#" className={`lk lk-${k}${ref?.dead ? ' dead' : ''}`}
+        style={ref?.c ? ({ '--lc': ref.c, color: k === 'p' ? undefined : `color-mix(in srgb, ${ref.c} 55%, var(--fg))`, textDecorationColor: k === 'p' ? undefined : ref.c } as CSSProperties) : undefined}
+        onClick={(e) => { e.preventDefault(); open({ k: kind, id }) }}>
         {ref?.n ?? 'someone'}
-      </button>,
+      </a>,
     )
     last = m.index! + m[0].length
   }
   if (last < text.length) out.push(text.slice(last))
   return <>{out}</>
+}
+
+/** A person's mark when there is no portrait: their initials on their Nen colour. */
+export function Avatar({ name, c, size = 44, dead, own }: { name: string; c?: string; size?: number; dead?: boolean; own?: boolean }) {
+  const w = name.trim().split(/\s+/)
+  const ini = (w[0]?.[0] ?? '?') + (w.length > 1 ? w[w.length - 1][0] : '')
+  return (
+    <span className={`av${dead ? ' dead' : ''}${own ? ' own' : ''}`} aria-hidden="true"
+      style={{ '--c': c || 'var(--muted-fg)', width: size, height: size, fontSize: Math.round(size * (ini.length > 1 ? 0.36 : 0.44)) } as CSSProperties}>
+      {ini.toUpperCase()}
+    </span>
+  )
 }
 
 export function PersonLink({ id, names }: { id: number; names?: Names }) {

@@ -97,7 +97,7 @@ export function frame(w: World, fresh: Id[], minImp = 3): Frame {
     t: w.t, date: dateStr(w.epoch, w.t), dateShort: shortDate(w.epoch, w.t), alive: dots.length, follow: w.player.follow,
     influence: Math.floor(w.player.influence), influenceMax: t.max, tier: w.player.tier,
     crossroads: w.player.crossroads.filter((c) => !c.chosen && c.expires > w.t).length,
-    dots, hazards, fronts, ticker, names: names(w, ticker.map((e) => e.text)),
+    dots, hazards, fronts, ticker, names: names(w, ticker.map((e) => e.text), [w.player.follow]),
     followLine: f ? `${f.short}: ${f.alive ? (f.trip ? `travelling to ${w.places[f.trip.to].name}` : `${f.act.note || f.act.k} in ${w.places[f.loc].name}`) : 'dead'}` : undefined,
     expeditions: activeRuns(w).length,
   }

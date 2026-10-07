@@ -29,7 +29,7 @@ export function WorldPanel() {
         <h3>Nations</h3>
         {d.nations.map((n) => (
           <div key={n.id} className="kv">
-            <span><button className="lk" style={{ borderBottomColor: n.color }} onClick={() => open({ k: 'nation', id: n.id })}>{n.name}</button>{n.atWar && <span className="chip red" style={{ marginLeft: 6 }}>at war</span>}{n.blocs.map((b) => <span key={b} className="chip" style={{ marginLeft: 4 }}>{b}</span>)}</span>
+            <span><button className="lk" style={{ textDecorationColor: n.color }} onClick={() => open({ k: 'nation', id: n.id })}>{n.name}</button>{n.atWar && <span className="chip red" style={{ marginLeft: 6 }}>at war</span>}{n.blocs.map((b) => <span key={b} className="chip" style={{ marginLeft: 4 }}>{b}</span>)}</span>
             <span className="mono small">{n.stability}%</span>
           </div>
         ))}
@@ -37,7 +37,7 @@ export function WorldPanel() {
       <div className="sec">
         <h3>Organisations</h3>
         {d.orgs.map((o) => (
-          <div key={o.id} className="kv"><span><button className="lk" style={{ borderBottomColor: o.color }} onClick={() => open({ k: 'org', id: o.id })}>{o.name}</button></span><span className="small muted">{o.count} {o.leader >= 0 ? <>· <PersonLink id={o.leader} names={d.names} /></> : null}</span></div>
+          <div key={o.id} className="kv"><span><button className="lk" style={{ textDecorationColor: o.color }} onClick={() => open({ k: 'org', id: o.id })}>{o.name}</button></span><span className="small muted">{o.count} {o.leader >= 0 ? <>· <PersonLink id={o.leader} names={d.names} /></> : null}</span></div>
         ))}
       </div>
     </>

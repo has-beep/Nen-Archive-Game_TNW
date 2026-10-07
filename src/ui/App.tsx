@@ -21,7 +21,7 @@ const SPEEDS = [
   { n: 'Years', days: 15, every: 60 },
 ]
 
-const TABS = [['follow', 'Following'], ['chronicle', 'Chronicle'], ['world', 'World'], ['beyond', 'Beyond the lake'], ['legends', 'Legends'], ['you', 'You']] as const
+const TABS = [['follow', 'Following'], ['chronicle', 'Chronicle'], ['world', 'World'], ['beyond', 'Beyond'], ['legends', 'Legends'], ['you', 'You']] as const
 
 export function App() {
   const [ready, setReady] = useState(false)
@@ -116,9 +116,11 @@ export function App() {
       <div className="nw">
         <header className="bar">
           <div className="brand"><b>Nen <i>World</i></b><span>a Nen Archive simulation</span></div>
-          <span className="date" aria-live="polite">{frame?.date ?? '…'}</span>
-          <div className="speed" role="group" aria-label="Speed">
-            {SPEEDS.map((s, i) => <button key={s.n} aria-pressed={speed === i} onClick={() => setSpeed(i)}>{i === 0 ? '❚❚' : s.n}</button>)}
+          <div className={`clock${speed === 0 ? ' paused' : ''}`}>
+            <span className="date" aria-live="polite">{frame?.date ?? '…'}</span>
+            <div className="speed" role="group" aria-label="Speed">
+              {SPEEDS.map((s, i) => <button key={s.n} aria-pressed={speed === i} aria-label={i === 0 ? 'Pause' : undefined} onClick={() => setSpeed(i)}>{i === 0 ? '❚❚' : s.n}</button>)}
+            </div>
           </div>
           <div className="infl" title="Influence: what you can spend to nudge fate">
             <span>Influence</span><div className="meter"><i style={{ width: `${frame ? frame.influence / frame.influenceMax * 100 : 0}%` }} /></div><span className="mono">{frame?.influence ?? 0}</span>
@@ -132,7 +134,7 @@ export function App() {
           <section className="panel" aria-label="Details">
             <nav className="tabs" role="tablist">
               {TABS.map(([k, l]) => (
-                <button key={k} role="tab" aria-selected={tab === k && !top} onClick={() => nav.setTab(k)}>
+                <button key={k} role="tab" aria-selected={tab === k && !top} title={k === 'beyond' ? 'Beyond the lake' : undefined} onClick={() => nav.setTab(k)}>
                   {l}{k === 'you' && frame && frame.crossroads > 0 && <span className="badge">{frame.crossroads}</span>}{k === 'beyond' && frame && frame.expeditions > 0 && <span className="chip" style={{ padding: '0 6px' }}>{frame.expeditions}</span>}
                 </button>
               ))}

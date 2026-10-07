@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { castView, eventView } from '../../sim/api/views'
 import type { CharacterSpec } from '../../sim/player/create'
 import { client } from '../client'
-import { NEN_COLOR, NEN_NAME, Rich, useNav, useView } from '../ctx'
+import { Avatar, NEN_COLOR, NEN_NAME, Rich, useNav, useView } from '../ctx'
 import type { PlaceDot } from '../components/MapView'
 
 function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
@@ -62,8 +62,9 @@ export function Cast({ onClose, onCreate }: { onClose: () => void; onCreate: () 
       {!cast ? <div className="empty">Loading the cast…</div> : (
         <div className="cast">
           {cast.map((c) => (
-            <button key={c.id} aria-pressed={sel === c.id} style={{ borderTopColor: c.c }} onClick={() => setSel(c.id)}>
-              <b>{c.name}</b><span className="small muted">{c.type} · {c.role}</span><span className="small muted">{c.at}</span>
+            <button key={c.id} aria-pressed={sel === c.id} onClick={() => setSel(c.id)}>
+              <span className="row" style={{ gap: 8, flexWrap: 'nowrap' }}><Avatar name={c.name} c={c.c} size={30} /><b style={{ minWidth: 0 }}>{c.name}</b></span>
+              <span className="small muted">{c.type} · {c.role}</span><span className="small muted">{c.at}</span>
             </button>
           ))}
         </div>
@@ -219,27 +220,42 @@ export function FightReplay({ eventId, onClose }: { eventId: number; onClose: ()
   }, [f, i, play])
   if (!d) return <Modal title="The fight" onClose={onClose}><div className="empty">Loading…</div></Modal>
   if (!f || !f.beats?.length) return <Modal title="The fight" onClose={onClose}><div className="small"><Rich text={d.event.text} names={d.names} /></div><div className="empty">This fight was too small to be recorded blow by blow.</div></Modal>
-  const b = f.beats[Math.min(i, f.beats.length - 1)]
+  const last = f.beats.length - 1, end = i >= last
+  const b = f.beats[Math.min(i, last)]
   const name = (k: number) => { const t = f.names[k]; const m = /^\{p(\d+)\}$/.exec(t); return m ? d.names.p[+m[1]]?.n?.split(' ')[0] ?? t : t }
+  const colour = (k: number) => (f.auraMax[k] > 0 && f.types[k] >= 0 ? NEN_COLOR[f.types[k]] : '#94a3b8')
+  // A camera on whoever is still standing, so two fighters fill the stage
+  // instead of sitting in a corner of the whole 40 x 24 field.
+  const live = b.pos.filter((_, k) => b.hp[k] > 0 || k === b.by || k === b.tgt)
+  const pts = live.length ? live : b.pos
+  const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1])
+  const mx = (Math.min(...xs) + Math.max(...xs)) / 2, my = (Math.min(...ys) + Math.max(...ys)) / 2
+  // The stage is 5:2, so it shows `span` tiles across and 0.4 * span down.
+  const span = Math.max(10, Math.max(...xs) - Math.min(...xs) + 7, (Math.max(...ys) - Math.min(...ys) + 5) * 2.5)
+  const P = ([x, y]: [number, number]): [number, number] => [Math.max(6, Math.min(94, 50 + (x - mx) / span * 100)), Math.max(14, Math.min(84, 50 + (y - my) / (span * 0.4) * 100))]
+  const won = f.names.map((_, k) => k).filter((k) => f.sides[k] === f.winner)
+  const draw = f.how === 'standoff' || f.winner < 0
+  const HOW: Record<string, string> = { down: 'Knocked down', fled: 'The other side ran', yield: 'They gave up', points: 'On points', standoff: 'Neither side could finish it' }
   return (
     <Modal title="The fight" onClose={onClose} wide>
       <div className="small"><Rich text={d.event.text} names={d.names} /></div>
       <div className="arena">
         {b.tgt != null && b.tgt !== b.by && b.pos[b.by] && b.pos[b.tgt] && (
-          <svg viewBox="0 0 40 24" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} aria-hidden="true">
-            <line x1={b.pos[b.by][0]} y1={b.pos[b.by][1]} x2={b.pos[b.tgt][0]} y2={b.pos[b.tgt][1]} stroke={/miss|notice|cut/.test(b.fx || '') ? 'var(--muted-fg)' : /heal|buff|shield/.test(b.fx || '') ? 'var(--primary)' : 'var(--accent)'} strokeWidth="2" strokeDasharray={/miss/.test(b.fx || '') ? '4 4' : undefined} vectorEffect="non-scaling-stroke" opacity="0.75" />
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} aria-hidden="true">
+            <line x1={P(b.pos[b.by])[0]} y1={P(b.pos[b.by])[1]} x2={P(b.pos[b.tgt])[0]} y2={P(b.pos[b.tgt])[1]} stroke={/miss|notice|cut/.test(b.fx || '') ? 'var(--muted-fg)' : /heal|buff|shield/.test(b.fx || '') ? 'var(--primary)' : 'var(--accent)'} strokeWidth="2" strokeDasharray={/miss/.test(b.fx || '') ? '4 4' : undefined} vectorEffect="non-scaling-stroke" opacity="0.75" />
           </svg>
         )}
-        {b.pos.map(([x, y], k) => {
-          const out = b.hp[k] <= 0
-          const c = f.types[k] >= 0 ? NEN_COLOR[f.types[k]] : '#94a3b8'
+        {b.pos.map((pos, k) => {
+          const out = b.hp[k] <= 0 || (end && !draw && f.sides[k] !== f.winner)
+          const [x, y] = P(pos)
           return (
-            <div key={k} className={`f${out ? ' out' : ''}${b.by === k ? ' act' : ''}${b.tgt === k ? ' hit' : ''}`} style={{ left: `${x / 40 * 100}%`, top: `${y / 24 * 100}%` }}>
-              <span className="disc" style={{ background: c, borderColor: f.sides[k] === 0 ? 'var(--primary)' : 'var(--accent)' }} />
-              <span className="nm">{name(k)}</span>
+            <div key={k} className={`f${out ? ' out' : ''}${b.by === k && !end ? ' act' : ''}${b.tgt === k ? ' hit' : ''}`} style={{ left: `${x}%`, top: `${y}%` }}>
+              <span className="disc" style={{ '--c': colour(k) } as CSSProperties}>{name(k)[0]}</span>
+              <span className={`nm s${f.sides[k]}`}>{name(k)}</span>
             </div>
           )
         })}
+        {end && <div className="result" style={{ '--c': draw ? 'var(--muted-fg)' : colour(won[0]) } as CSSProperties}><b>{draw ? 'Standoff' : `${won.map(name).join(' & ')} win${won.length > 1 ? '' : 's'}`}</b>{HOW[f.how] ?? ''} · {f.exchanges} exchanges</div>}
       </div>
       <div className="beat"><Rich text={b.x} names={d.names} /></div>
       <div className="hpbars">
@@ -247,13 +263,13 @@ export function FightReplay({ eventId, onClose }: { eventId: number; onClose: ()
           <div key={k} className="hpb">
             <span>{name(k)} <span className="muted">{f.sides[k] === 0 ? '(attacker)' : '(defender)'}</span></span>
             <div className="track"><i style={{ width: `${Math.max(0, b.hp[k] / f.hpMax[k] * 100)}%` }} /></div>
-            {f.auraMax[k] > 0 && <div className="track aura"><i style={{ width: `${Math.max(0, b.au[k] / f.auraMax[k] * 100)}%` }} /></div>}
+            {f.auraMax[k] > 0 && <div className="track aura"><i style={{ width: `${Math.max(0, b.au[k] / f.auraMax[k] * 100)}%`, background: colour(k) }} /></div>}
           </div>
         ))}
       </div>
       <div className="row">
         <button className="btn small" onClick={() => setI((x) => Math.max(0, x - 1))}>Back</button>
-        <button className="btn small primary" onClick={() => setPlay((v) => !v)}>{play ? 'Pause' : 'Play'}</button>
+        <button className="btn small primary" onClick={() => { if (end) { setI(0); setPlay(true) } else setPlay((v) => !v) }}>{end ? 'Replay' : play ? 'Pause' : 'Play'}</button>
         <button className="btn small" onClick={() => setI((x) => Math.min(f.beats.length - 1, x + 1))}>Next</button>
         <input aria-label="Moment in the fight" type="range" min={0} max={f.beats.length - 1} value={i} onChange={(e) => { setI(+e.target.value); setPlay(false) }} style={{ flex: 1 }} />
         <span className="mono small">{i + 1}/{f.beats.length}</span>

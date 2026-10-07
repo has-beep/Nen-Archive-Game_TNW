@@ -37,7 +37,7 @@ for (const [i, tab] of ['Nen', 'Mind', 'Bonds', 'Life'].entries()) {
   const b = page.locator('.scroll .tabs button', { hasText: tab })
   if (await b.count()) { await b.first().click(); await page.waitForTimeout(500); if (i === 0) await page.screenshot({ path: `${out}/3-nen.png` }) }
 }
-for (const tab of ['Chronicle', 'World', 'Beyond the lake', 'Legends', 'You']) {
+for (const tab of ['Chronicle', 'World', 'Beyond', 'Legends', 'You']) {
   await page.click(`.panel > .tabs button:has-text("${tab}")`)
   await page.waitForTimeout(900)
   await page.screenshot({ path: `${out}/4-${tab.split(' ')[0].toLowerCase()}.png` })

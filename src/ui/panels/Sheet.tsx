@@ -1,23 +1,29 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import type { personView } from '../../sim/api/views'
-import { Bar, NEN_COLOR, NEN_NAME, PersonLink, Rich, useNav, useView } from '../ctx'
+import { Avatar, Bar, NEN_COLOR, NEN_NAME, PersonLink, Rich, useNav, useView } from '../ctx'
 import { EventList } from './Chronicle'
 
 type PV = NonNullable<ReturnType<typeof personView>>
 
-const CAT_ORDER = [0, 1, 5, 3, 2, 4] // Enhancer at the top, then round the hexagon as the series draws it.
+// Enhancer at the top, then clockwise: Transmuter, Conjurer, Specialist,
+// Manipulator, Emitter, as Wing draws it (and as NEN_TYPES is ordered).
+const CAT_ORDER = [0, 1, 2, 3, 4, 5]
 
 function Hexagon({ cat, type }: { cat: number[]; type: number }) {
-  const R = 52, cx = 70, cy = 66
+  const R = 74, cx = 150, cy = 112
   const pt = (i: number, r: number) => { const a = -Math.PI / 2 + i * Math.PI / 3; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r] }
   const ring = (r: number) => CAT_ORDER.map((_, i) => pt(i, r).join(',')).join(' ')
   const shape = CAT_ORDER.map((c, i) => pt(i, R * Math.max(0.04, (cat[c] || 0) / 100)).join(',')).join(' ')
   return (
-    <div className="hex" style={{ width: 140, flex: 'none' }}>
-      <svg viewBox="0 0 140 134" width="140" height="134" role="img" aria-label="Nen category proficiency">
+    <div className="hex" style={{ width: '100%', maxWidth: 300, margin: '0 auto' }}>
+      <svg viewBox="0 0 300 224" style={{ width: '100%', display: 'block' }} role="img" aria-label="Nen category proficiency">
         {[0.33, 0.66, 1].map((k) => <polygon key={k} points={ring(R * k)} fill="none" stroke="var(--border)" />)}
-        <polygon points={shape} fill={NEN_COLOR[type] + '44'} stroke={NEN_COLOR[type]} strokeWidth="1.5" />
-        {CAT_ORDER.map((c, i) => { const [x, y] = pt(i, R + 11); return <text key={c} x={x} y={y + 3} textAnchor="middle" style={{ fill: c === type ? NEN_COLOR[c] : undefined }}>{NEN_NAME[c].slice(0, 3)}</text> })}
+        <polygon points={shape} fill={NEN_COLOR[type] + '44'} stroke={NEN_COLOR[type]} strokeWidth="2" strokeLinejoin="round" />
+        {CAT_ORDER.map((c, i) => {
+          const [x, y] = pt(i, R + 16)
+          const side = Math.abs(x - cx) < 4 ? 'middle' : x > cx ? 'start' : 'end'
+          return <text key={c} x={x} y={y + 4} textAnchor={side} style={{ fill: c === type ? NEN_COLOR[c] : undefined, fontWeight: c === type ? 800 : undefined }}>{NEN_NAME[c]} <tspan style={{ fontWeight: 500, opacity: 0.75 }}>{cat[c] ?? 0}</tspan></text>
+        })}
       </svg>
     </div>
   )
@@ -29,20 +35,21 @@ export function Sheet({ id }: { id: number }) {
   const [tab, setTab] = useState('overview')
   if (!p) return <div className="empty">Loading…</div>
   const n = p.names
-  const nenC = p.nen.awake || p.nen.known ? p.nen.color : 'var(--border)'
+  const known = p.nen.awake || p.nen.known
+  const nenC = known ? p.nen.color : 'var(--muted-fg)'
   return (
     <>
       <div className="sec">
-        <div className="stripe" style={{ background: nenC }} />
-        <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div style={{ minWidth: 0 }}>
+        <div className="phead" style={{ '--nen': nenC } as CSSProperties}>
+          <Avatar name={p.name} c={known ? p.nen.color : undefined} size={48} dead={!p.alive} own={p.owned} />
+          <div className="who">
             <h2 className="name">{p.name}</h2>
             <div className="sub">{p.title ? `${p.title} · ` : ''}{p.role} · {p.alive ? `${p.age}` : 'dead'}{p.nation ? ` · ${p.nation}` : ''}</div>
-          </div>
-          <div className="row">
-            {p.owned && <span className="chip gold">Yours</span>}
-            {p.canon && <span className="chip">Canon</span>}
-            {p.license && <span className="chip on">Hunter {'★'.repeat(p.license.stars)}</span>}
+            <div className="row" style={{ gap: 4, marginTop: 6 }}>
+              {p.owned && <span className="chip gold">Yours</span>}
+              {p.canon && <span className="chip">Canon</span>}
+              {p.license && <span className="chip on">Hunter {'★'.repeat(p.license.stars)}</span>}
+            </div>
           </div>
         </div>
         <div className="small">
@@ -58,7 +65,7 @@ export function Sheet({ id }: { id: number }) {
           {p.owned && <button className="btn small" onClick={() => nav.run({ k: 'release', id: p.id }).then((r) => nav.toast((r as { msg: string }).msg))}>Let them go</button>}
         </div>
       </div>
-      <div className="tabs" role="tablist" style={{ padding: 0, border: 0 }}>
+      <div className="tabs subtabs" role="tablist" style={{ '--nen': nenC } as CSSProperties}>
         {['overview', 'nen', 'mind', 'bonds', 'life'].map((t) => <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>)}
       </div>
       {tab === 'overview' && <Overview p={p} />}
@@ -110,9 +117,9 @@ function Overview({ p }: { p: PV }) {
         <h3>What they want</h3>
         {p.dreams.length ? p.dreams.map((d, i) => (
           <div key={i} className="barline" style={{ gridTemplateColumns: 'minmax(0,1fr) 70px 34px' }}>
-            <span style={{ textDecoration: d.done ? 'line-through' : undefined, color: d.failed ? 'var(--accent)' : undefined }}><Rich text={d.label} names={n} /></span>
+            <span title={`Matters to them: ${d.pri}/100`} style={{ textDecoration: d.done ? 'line-through' : undefined, color: d.failed ? 'var(--accent)' : undefined, fontWeight: d.pri >= 80 && !d.done && !d.failed ? 600 : undefined }}><Rich text={d.label} names={n} /></span>
             <div className="track"><i style={{ width: `${d.done ? 100 : d.prog}%`, background: d.done ? 'var(--primary)' : 'var(--gold)' }} /></div>
-            <span className="num">{d.pri}</span>
+            <span className="num" style={{ color: d.done ? 'var(--primary)' : d.failed ? 'var(--accent)' : undefined }}>{d.done ? '✓' : d.failed ? '✗' : `${Math.round(d.prog)}%`}</span>
           </div>
         )) : <div className="small muted">Nothing in particular.</div>}
       </div>
@@ -141,20 +148,19 @@ function NenTab({ p }: { p: PV }) {
   )
   return (
     <>
-      <div className="row" style={{ alignItems: 'flex-start', flexWrap: 'nowrap' }}>
-        <Hexagon cat={p.nen.cat} type={p.nen.typeIdx} />
-        <div className="sec" style={{ flex: 1, minWidth: 0 }}>
-          <div className="kv"><span>Type</span><span style={{ color: p.nen.color, fontWeight: 700 }}>{p.nen.type || 'Unknown'}</span></div>
-          <div className="kv"><span>Level</span><span className="mono">{p.nen.lvl} / {p.nen.cap}</span></div>
-          <div className="kv"><span>Aura</span><span className="mono">{p.nen.auraMax.toLocaleString()}</span></div>
-          <div className="kv"><span>Talent</span><span className="mono">{p.nen.pot}</span></div>
-          {p.nen.lifeSpent > 0 && <div className="kv"><span>Life spent</span><span className="mono">{p.nen.lifeSpent} days</span></div>}
-          {p.nen.burnedOut && <span className="chip red">Burned out by a vow</span>}
-        </div>
+      <Hexagon cat={p.nen.cat} type={p.nen.typeIdx} />
+      <div className="grid2">
+        <div className="kv"><span>Type</span><span style={{ color: `color-mix(in srgb, ${p.nen.color} 70%, var(--fg))`, fontWeight: 700 }}>{p.nen.type || 'Unknown'}</span></div>
+        <div className="kv"><span>Level</span><span className="mono">{p.nen.lvl} / {p.nen.cap}</span></div>
+        <div className="kv"><span>Aura</span><span className="mono">{p.nen.auraMax.toLocaleString()}</span></div>
+        <div className="kv"><span>Talent</span><span className="mono">{p.nen.pot}</span></div>
+        {p.nen.lifeSpent > 0 && <div className="kv"><span>Life spent</span><span className="mono">{p.nen.lifeSpent} days</span></div>}
       </div>
+      {p.nen.burnedOut && <span className="chip red" style={{ alignSelf: 'flex-start' }}>Burned out by a vow</span>}
       <div className="sec">
         <h3>Techniques</h3>
-        <div className="bars">{p.nen.tech.map((t) => <Bar key={t.k} label={t.k} v={t.v} color={p.nen.color} />)}</div>
+        <div className="bars">{p.nen.tech.filter((t) => t.v > 0).map((t) => <Bar key={t.k} label={t.k} v={t.v} color={p.nen.color} />)}</div>
+        {p.nen.tech.some((t) => t.v <= 0) && <div className="row small muted" style={{ gap: 4 }}>Not yet: {p.nen.tech.filter((t) => t.v <= 0).map((t) => <span key={t.k} className="chip" style={{ textTransform: 'capitalize' }}>{t.k}</span>)}</div>}
       </div>
       <div className="sec">
         <h3>Hatsu</h3>

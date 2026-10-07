@@ -24,6 +24,7 @@ import { log } from '../history'
 import { makeItem } from '../society/economy'
 import { announceExam } from '../society/calendar'
 import { initDarkContinent } from '../society/expeditions'
+import { placeArchive, type ArchiveMode } from './archive'
 import { seedDreams } from '../people/dreams'
 
 export interface WorldOptions {
@@ -36,6 +37,9 @@ export interface WorldOptions {
   tier?: string
   /** Archive characters (from the Nen Archive) to add as minor canon. */
   archive?: CanonDef[]
+  /** The wider canon cast imported from the Nen Archive: none, the arcs that
+   *  start in 1998-99 (default), or everyone. */
+  cast?: ArchiveMode
 }
 
 export const DEFAULT_LAWS: Laws = { lethality: 0.5, vowPower: 1, growth: 1, healing: 1, postmortem: true, wars: true, plotArmor: false, romance: true, calamities: true, disasters: true, expeditions: true }
@@ -114,7 +118,11 @@ export function createWorld(o: WorldOptions): World {
   const hisoka = personK(w, 'hisoka_morow'); if (hisoka) { const m = hisoka.orgs.find((x) => w.orgs[x.org].key === 'troupe'); if (m) m.secret = false; hisoka.flags.fakeSpider = 1 }
 
   // The generated population.
-  populate(w, r, o.population ?? 240)
+  // The wider canon cast from the Archive, then generated people to fill the
+  // world around them (fewer when the Archive's cast is there).
+  const castMode = o.cast ?? 'core'
+  const placed = placeArchive(w, castMode)
+  populate(w, r, o.population ?? Math.max(120, 240 - Math.round(placed * 0.4)))
   backstories(w, r)
   scarletEyes(w, r)
 

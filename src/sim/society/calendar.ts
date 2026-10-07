@@ -74,10 +74,10 @@ interface ExamState {
 }
 
 const PHASES = [
-  { k: 'run', n: 'endurance march', text: 'leads the candidates on a march that does not stop, through a swamp that eats the slow', fail: 0.32 },
-  { k: 'cook', n: 'test of wits', text: 'sets a task with no right answer, only good ones', fail: 0.38 },
-  { k: 'tower', n: 'tower of traps', text: 'drops the candidates into a tower whose every route is a trap', fail: 0.38 },
-  { k: 'hunt', n: 'island hunt', text: 'turns the candidates loose on an island to take each other\'s badges', fail: 0.33 },
+  { k: 'run', n: 'endurance march', text: 'leads the candidates on a march that does not stop, through a swamp that eats the slow', fail: 0.4 },
+  { k: 'cook', n: 'test of wits', text: 'sets a task with no right answer, only good ones', fail: 0.45 },
+  { k: 'tower', n: 'tower of traps', text: 'drops the candidates into a tower whose every route is a trap', fail: 0.45 },
+  { k: 'hunt', n: 'island hunt', text: 'turns the candidates loose on an island to take each other\'s badges', fail: 0.45 },
 ]
 
 export function announceExam(w: World, year: number) {

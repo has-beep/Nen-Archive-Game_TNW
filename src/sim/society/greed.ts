@@ -47,7 +47,7 @@ export function greedDaily(w: World) {
     if (prey.length) {
       const v = prey.sort((a, b) => (b.dreams.find((d) => d.k === 'clear')?.prog ?? 0) - (a.dreams.find((d) => d.k === 'clear')?.prog ?? 0))[0]
       const allies = inside.filter((p) => p !== v && p.party != null && p.party === v.party)
-      fight(w, { a: gangs.slice(0, 3), b: [v, ...allies.slice(0, 3)], intentA: 'kill', place: gi.id, why: 'in Greed Island, over the cards', record: true })
+      fight(w, { a: gangs.slice(0, 3), b: [v, ...allies.slice(0, 3)], intentA: 'kill', place: gi.id, why: 'over the cards', record: true })
     }
   }
   // Players who like each other team up.

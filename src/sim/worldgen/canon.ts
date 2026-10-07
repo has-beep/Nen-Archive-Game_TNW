@@ -5,7 +5,7 @@ import type { CanonDef } from '../../data/canon-types'
 import type { NenType } from '../constants'
 import { TECHS, TECH_INFO } from '../constants'
 import type { Person, World } from '../types'
-import { makePerson, newNen, attrsFrom, mindFrom, facetsFrom, valuesFrom } from '../people/person'
+import { makePerson, newNen, attrsFrom, mindFrom, facetsFrom, valuesFrom, hpMax } from '../people/person'
 import { TYPE_LEAN, inferType, randomOrientation } from '../people/traits'
 import { compileSpec } from '../nen/hatsu'
 import { epochOf } from '../time'
@@ -65,7 +65,7 @@ export function buildCanon(w: World, d: CanonDef): Person {
   p.flags.__rel = JSON.stringify(d.rel || [])
   p.flags.__orgs = JSON.stringify(d.orgs || [])
   if (d.items) p.flags.__items = JSON.stringify(d.items)
-  p.hp = Math.round((40 + p.attrs.tou * 0.75 + p.attrs.endu * 0.35 + p.nen.lvl * 0.25 + (p.species === 'ant' ? 40 : 0)))
+  p.hp = hpMax(p)
   registerKey(w, p)
   touch(w)
   // Ants created mid-game resolve their links at once.

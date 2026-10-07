@@ -162,6 +162,13 @@ export function develop(w: World, p: Person, o: GenOpts & { spec?: Hatsu; cause?
     const grudge = grudgeOf(w, p)
     const kind = o.kind || (p.role === 'doctor' || p.skills.medicine > 50 ? (r.chance(0.6) ? 'mend' : undefined) : undefined)
     h = generateHatsu(w, r, p, { ...o, kind, grudge: o.grudge || grudge })
+    // A character from the Archive gets their ability's real name.
+    if (p.flags.abilityNames) {
+      const names = JSON.parse(p.flags.abilityNames as string) as string[]
+      const nm = names.shift()
+      if (nm) h.name = nm
+      if (names.length) p.flags.abilityNames = JSON.stringify(names); else delete p.flags.abilityNames
+    }
   }
   p.nen.hatsu.push(h)
   p.nen.cat[h.cats[0][0]] = Math.max(p.nen.cat[h.cats[0][0]], 25)

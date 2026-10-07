@@ -197,3 +197,6 @@ a.lk:hover, button.lk:hover { border-bottom-color: currentColor; }
 .steps span.now { background: var(--primary); color: var(--primary-fg); }
 .steps span.bad { background: var(--accent); color: #fff; }
 .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px; z-index: 30; max-width: calc(100% - 32px); }
+.lake { width: 100%; height: auto; aspect-ratio: 695 / 386; flex: none; display: block; border-radius: 10px; border: 1px solid var(--border); margin: 10px 0 4px; }
+.lake-t { font: 600 21px Inter, system-ui, sans-serif; fill: #ece6d8; paint-order: stroke; stroke: var(--beyond); stroke-width: 4px; }
+.lake-t.sea { font-style: italic; font-weight: 500; font-size: 16px; fill: var(--map-sea-text); stroke: var(--water); }

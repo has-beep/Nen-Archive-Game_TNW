@@ -300,12 +300,12 @@ export function beyondView(w: World) {
     return {
       key: c.key, known, public: f ? f.secret < 0 : false, canon: c.canon, knownBy: knownBy(c.key),
       name: known ? c.name : '???', title: known ? c.title : 'unrecorded', threat: known ? c.threat : '?', desc: known ? c.desc : 'Nobody inside the lake has seen it and lived.',
-      region: dc.regions.find((r) => r.key === c.region)?.name ?? '?', hope: known ? c.hope.name : '?', hopeDesc: known ? c.hope.desc : '', brought: dc.hopes[c.hope.key] || 0,
+      region: dc.regions.find((r) => r.key === c.region)?.name ?? '?', regionKey: c.region, hope: known ? c.hope.name : '?', hopeDesc: known ? c.hope.desc : '', brought: dc.hopes[c.hope.key] || 0,
     }
   })
   const runs = (w.expeditions || []).slice().reverse().slice(0, 40).map((x) => ({
     id: x.id, name: x.name, leader: x.leader, stage: x.stage, legal: x.legal, members: x.members, dead: x.dead.length, weeks: x.weeks,
-    supplies: Math.round(x.supplies * 100), morale: Math.round(x.morale), region: x.region ? dc.regions.find((r) => r.key === x.region)?.name : null,
+    supplies: Math.round(x.supplies * 100), morale: Math.round(x.morale), region: x.region ? dc.regions.find((r) => r.key === x.region)?.name : null, regionKey: x.region ?? null, goalKey: x.goal ?? null,
     goal: x.goal ? dc.regions.find((r) => r.key === x.goal)?.name : null, found: x.found.map((k) => dc.calamities.find((c) => c.hope.key === k)?.hope.name), met: x.met.map((k) => dc.calamities.find((c) => c.key === k)?.name),
     end: x.end ?? null, endDate: x.endT != null ? shortDate(w.epoch, x.endT) : null, since: shortDate(w.epoch, x.t0),
   }))

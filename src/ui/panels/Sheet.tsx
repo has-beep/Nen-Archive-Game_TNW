@@ -53,6 +53,7 @@ export function Sheet({ id }: { id: number }) {
         </div>
         <div className="row">
           {!p.followed && <button className="btn small" onClick={() => nav.run({ k: 'follow', id: p.id }).then(() => nav.toast(`Following ${p.short}.`))}>Follow</button>}
+          <button className="btn small" aria-pressed={p.watched} onClick={() => nav.run({ k: 'watch', id: p.id, on: !p.watched }).then((r) => nav.toast((r as { msg: string }).msg))}>{p.watched ? '★ Watching' : '☆ Watch'}</button>
           {p.alive && !p.owned && <button className="btn small" onClick={() => nav.run({ k: 'own', id: p.id }).then((r) => nav.toast((r as { msg: string }).msg))}>Guide this character</button>}
           {p.owned && <button className="btn small" onClick={() => nav.run({ k: 'release', id: p.id }).then((r) => nav.toast((r as { msg: string }).msg))}>Let them go</button>}
         </div>

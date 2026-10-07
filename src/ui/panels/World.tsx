@@ -1,4 +1,4 @@
-import type { nationView, orgView, placeView, worldView } from '../../sim/api/views'
+import type { nationView, orgView, placeView, storyView, worldView } from '../../sim/api/views'
 import { Bar, PersonLink, Rich, useNav, useView } from '../ctx'
 import { EventList } from './Chronicle'
 
@@ -11,7 +11,7 @@ export function WorldPanel() {
       <div className="sec">
         <h3>What is happening</h3>
         {d.stories.length ? d.stories.map((s) => (
-          <div key={s.id} className="kv"><span>{s.title}</span><span className="small muted">since {s.since}</span></div>
+          <div key={s.id} className="kv"><span><button className="lk" onClick={() => open({ k: 'story', id: s.id })}>{s.title}</button></span><span className="small muted">since {s.since} · {s.n} events</span></div>
         )) : <div className="small muted">A quiet moment, for now.</div>}
       </div>
       {d.wars.length > 0 && <div className="sec"><h3>Wars</h3>{d.wars.map((w) => (
@@ -130,3 +130,18 @@ export function OrgDetail({ id }: { id: number }) {
 }
 
 export { Rich }
+
+export function StoryDetail({ id }: { id: number }) {
+  const d = useView<NonNullable<ReturnType<typeof storyView>>>({ k: 'view', view: 'story', id }, [id], 2000)
+  if (!d) return <div className="empty">Loading…</div>
+  return (
+    <>
+      <div className="sec">
+        <h2 className="name">{d.title}</h2>
+        <div className="sub">{d.from}{d.to ? ` – ${d.to}` : ', still unfolding'}{d.outcome ? `. ${d.outcome}` : ''}</div>
+        {d.who.length > 0 && <div className="row">{d.who.slice(0, 10).map((id) => <span key={id} className="chip"><PersonLink id={id} names={d.names} /></span>)}</div>}
+      </div>
+      <div className="sec"><h3>How it went</h3><EventList events={d.events.slice().reverse()} names={d.names} /></div>
+    </>
+  )
+}

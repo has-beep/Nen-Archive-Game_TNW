@@ -90,7 +90,8 @@ export function frame(w: World, fresh: Id[], minImp = 3): Frame {
   for (const pl of w.places) for (const h of pl.hazards || []) if (h.sev > 0.05) hazards.push({ id: pl.id, x: pl.x, y: pl.y, k: h.k, sev: h.sev, color: HAZARDS[h.k].color, label: HAZARDS[h.k].label })
   const fronts: Frame['fronts'] = []
   for (const wr of w.wars) if (wr.end == null) for (const fr of wr.fronts) { const pl = w.places[fr.place]; if (pl) fronts.push({ a: wr.a[0], d: wr.d[0], place: pl.id, x: pl.x, y: pl.y }) }
-  const evs = fresh.map((id) => eventById(w, id)).filter((e): e is HistEvent => !!e && (e.imp >= minImp || (f != null && e.who.includes(f.id) && e.imp >= 1) || e.who.some((id) => w.people[id]?.owned)))
+  const watch = new Set(w.player.watch)
+  const evs = fresh.map((id) => eventById(w, id)).filter((e): e is HistEvent => !!e && (e.imp >= minImp || (f != null && e.who.includes(f.id) && e.imp >= 1) || e.who.some((id) => w.people[id]?.owned || watch.has(id) && e.imp >= 1)))
   const ticker = evs.slice(-30).map((e) => lite(w, e))
   return {
     t: w.t, date: dateStr(w.epoch, w.t), dateShort: shortDate(w.epoch, w.t), alive: dots.length, follow: w.player.follow,
@@ -138,7 +139,7 @@ export function personView(w: World, id: Id) {
   return {
     id: p.id, name: p.name, short: p.short, sex: p.sex, species: p.species, alive: p.alive, age: age(w, p), born: dateStr(w.epoch, p.born),
     death: p.death ? { date: dateStr(w.epoch, p.death.t), cause: p.death.cause, by: p.death.by } : null,
-    role: ROLES[p.role]?.n || p.role, title: p.title, canon: p.canon, major: p.major, owned: !!p.owned, followed: w.player.follow === p.id, bio: p.bio,
+    role: ROLES[p.role]?.n || p.role, title: p.title, canon: p.canon, major: p.major, owned: !!p.owned, followed: w.player.follow === p.id, watched: w.player.watch.includes(p.id), bio: p.bio,
     nation: w.nations[p.nation]?.name, home: w.places[p.home]?.name, at: pl ? { id: pl.id, name: pl.name } : null,
     trip: p.trip ? { to: w.places[p.trip.to].name, days: Math.max(0, p.trip.t1 - w.t) } : null,
     doing: p.act.note || p.act.k, plan: p.plan ? p.plan.why || p.plan.k : null,
@@ -275,7 +276,7 @@ export function orgView(w: World, id: Id) {
 }
 
 export function worldView(w: World) {
-  const stories = w.stories.filter((s) => s.status === 'active').sort((a, b) => b.heat - a.heat).slice(0, 20).map((s) => ({ id: s.id, k: s.k, title: s.title, who: s.who.slice(0, 6), since: shortDate(w.epoch, s.t0), heat: Math.round(s.heat) }))
+  const stories = w.stories.filter((s) => s.status === 'active').sort((a, b) => b.heat - a.heat).slice(0, 20).map((s) => ({ id: s.id, k: s.k, title: s.title, who: s.who.slice(0, 6), since: shortDate(w.epoch, s.t0), heat: Math.round(s.heat), n: s.ev.length }))
   const wars = w.wars.filter((x) => x.end == null).map((x) => ({ id: x.id, name: x.name, goal: x.goal, score: Math.round(x.score), dead: x.dead, start: shortDate(w.epoch, x.start) }))
   const disasters = w.places.filter((p) => p.hazards?.length).map((p) => ({ id: p.id, name: p.name, hazards: p.hazards!.map((h) => ({ k: h.k, label: HAZARDS[h.k].label, sev: Math.round(h.sev * 100), color: HAZARDS[h.k].color })) }))
   return {
@@ -324,6 +325,19 @@ export function legendsView(w: World) {
   const great = w.events.filter((e) => e.imp >= 5).slice(-80).reverse().map((e) => lite(w, e))
   const ended = w.stories.filter((s) => s.status === 'resolved').slice(-30).reverse().map((s) => ({ id: s.id, title: s.title, outcome: s.outcome, from: shortDate(w.epoch, s.t0), to: s.t1 != null ? shortDate(w.epoch, s.t1) : '' }))
   return { famous, strongest, killers, dead, great, ended, names: names(w, great.map((e) => e.text), famous.concat(strongest.map((s) => s.id), killers.map((k) => k.id), dead.map((d) => d.id))) }
+}
+
+/* ---------------- A storyline ---------------- */
+
+export function storyView(w: World, id: Id) {
+  const st = w.stories.find((s) => s.id === id)
+  if (!st) return null
+  const events = st.ev.map((eid) => eventById(w, eid)).filter((e): e is HistEvent => !!e).map((e) => lite(w, e))
+  // Consequences recorded after the story's own events, by cause.
+  const ids = new Set(st.ev)
+  const after = w.events.filter((e) => e.cause != null && ids.has(e.cause) && !ids.has(e.id) && e.imp >= 2).slice(0, 30).map((e) => lite(w, e))
+  const all = events.concat(after).sort((a, b) => a.t - b.t || a.id - b.id)
+  return { id, title: st.title, k: st.k, status: st.status, outcome: st.outcome, from: shortDate(w.epoch, st.t0), to: st.t1 != null ? shortDate(w.epoch, st.t1) : null, who: st.who, events: all, names: names(w, all.map((e) => e.text), st.who) }
 }
 
 /* ---------------- Search, player ---------------- */

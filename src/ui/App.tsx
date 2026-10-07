@@ -6,7 +6,7 @@ import { NavCtx, Rich, useToast, type Nav, type Target } from './ctx'
 import { MapView, type PlaceDot } from './components/MapView'
 import { Sheet } from './panels/Sheet'
 import { Chronicle, EventDetail } from './panels/Chronicle'
-import { NationDetail, OrgDetail, PlaceDetail, WorldPanel } from './panels/World'
+import { NationDetail, OrgDetail, PlaceDetail, StoryDetail, WorldPanel } from './panels/World'
 import { Beyond, Legends } from './panels/Beyond'
 import { You } from './panels/You'
 import { Cast, Creator, FightReplay, Forge, NewWorld } from './modals/Modals'
@@ -145,6 +145,7 @@ export function App() {
               {ready && top?.k === 'nation' && <NationDetail key={`n${top.id}`} id={top.id} />}
               {ready && top?.k === 'org' && <OrgDetail key={`o${top.id}`} id={top.id} />}
               {ready && top?.k === 'event' && <EventDetail key={`e${top.id}`} id={top.id} />}
+              {ready && top?.k === 'story' && <StoryDetail key={`s${top.id}`} id={top.id} />}
               {ready && !top && tab === 'follow' && frame && <Sheet key={`f${frame.follow}`} id={frame.follow} />}
               {ready && !top && tab === 'chronicle' && <Chronicle />}
               {ready && !top && tab === 'world' && <WorldPanel />}

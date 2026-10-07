@@ -3,7 +3,7 @@ import type { Names } from '../sim/api/views'
 import { client } from './client'
 import type { Request } from '../sim/api/engine'
 
-export type Target = { k: 'person' | 'place' | 'nation' | 'org' | 'event'; id: number }
+export type Target = { k: 'person' | 'place' | 'nation' | 'org' | 'event' | 'story'; id: number }
 
 export interface Nav {
   open: (t: Target) => void

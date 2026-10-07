@@ -225,6 +225,11 @@ export function FightReplay({ eventId, onClose }: { eventId: number; onClose: ()
     <Modal title="The fight" onClose={onClose} wide>
       <div className="small"><Rich text={d.event.text} names={d.names} /></div>
       <div className="arena">
+        {b.tgt != null && b.tgt !== b.by && b.pos[b.by] && b.pos[b.tgt] && (
+          <svg viewBox="0 0 40 24" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} aria-hidden="true">
+            <line x1={b.pos[b.by][0]} y1={b.pos[b.by][1]} x2={b.pos[b.tgt][0]} y2={b.pos[b.tgt][1]} stroke={/miss|notice|cut/.test(b.fx || '') ? 'var(--muted-fg)' : /heal|buff|shield/.test(b.fx || '') ? 'var(--primary)' : 'var(--accent)'} strokeWidth="2" strokeDasharray={/miss/.test(b.fx || '') ? '4 4' : undefined} vectorEffect="non-scaling-stroke" opacity="0.75" />
+          </svg>
+        )}
         {b.pos.map(([x, y], k) => {
           const out = b.hp[k] <= 0
           const c = f.types[k] >= 0 ? NEN_COLOR[f.types[k]] : '#94a3b8'

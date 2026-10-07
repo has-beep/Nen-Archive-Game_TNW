@@ -18,7 +18,7 @@ export type Request =
   | { k: 'load'; json: string }
   | { k: 'save' }
   | { k: 'step'; days: number }
-  | { k: 'view'; view: 'person' | 'place' | 'nation' | 'org' | 'event' | 'chronicle' | 'world' | 'beyond' | 'legends' | 'search' | 'cast' | 'player' | 'places'; id?: Id; q?: string; opts?: Record<string, unknown> }
+  | { k: 'view'; view: 'person' | 'place' | 'nation' | 'org' | 'event' | 'chronicle' | 'world' | 'beyond' | 'legends' | 'search' | 'cast' | 'player' | 'places' | 'story'; id?: Id; q?: string; opts?: Record<string, unknown> }
   | { k: 'follow'; id: Id }
   | { k: 'own'; id: Id }
   | { k: 'release'; id: Id }
@@ -29,6 +29,7 @@ export type Request =
   | { k: 'tier'; tier: 'free' | 'supporter' | 'coffee' }
   | { k: 'frame'; minImp?: number }
   | { k: 'importOC'; oc: ArchiveOC; ability?: ArchiveAbility }
+  | { k: 'watch'; id: Id; on: boolean }
 
 export class Engine {
   w: World | null = null
@@ -55,6 +56,11 @@ export class Engine {
       }
       case 'frame': { const fr = V.frame(w, this.fresh, req.minImp ?? 3); this.fresh = []; return fr }
       case 'follow': if (w.people[req.id]) w.player.follow = req.id; return { ok: true }
+      case 'watch': {
+        w.player.watch = w.player.watch.filter((x) => x !== req.id)
+        if (req.on && w.people[req.id]) w.player.watch.push(req.id)
+        return { ok: true, msg: req.on ? `Watching ${w.people[req.id]?.short}. Their news reaches your ticker.` : 'No longer watching.' }
+      }
       case 'own': return own(w, req.id)
       case 'release': return release(w, req.id)
       case 'choose': return choose(w, req.id, req.option)
@@ -81,6 +87,7 @@ export class Engine {
           case 'cast': return V.castView(w)
           case 'player': return V.playerView(w)
           case 'places': return V.placesView(w)
+          case 'story': return V.storyView(w, req.id!)
         }
     }
     return null

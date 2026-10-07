@@ -1,5 +1,5 @@
 import type { beyondView, legendsView } from '../../sim/api/views'
-import { PersonLink, Rich, useView } from '../ctx'
+import { PersonLink, Rich, useNav, useView } from '../ctx'
 import { EventList } from './Chronicle'
 
 const STAGES = ['gathering', 'crossing', 'exploring', 'returning', 'home']
@@ -54,6 +54,7 @@ function Run({ r, names }: { r: R; names: NonNullable<ReturnType<typeof beyondVi
 }
 
 export function Legends() {
+  const { open } = useNav()
   const d = useView<ReturnType<typeof legendsView>>({ k: 'view', view: 'legends' }, [], 4000)
   if (!d) return <div className="empty">Loading…</div>
   const n = d.names
@@ -63,7 +64,7 @@ export function Legends() {
       <div className="sec"><h3>The strongest</h3>{d.strongest.map((s, i) => <div key={s.id} className="kv"><span>{i + 1}. <PersonLink id={s.id} names={n} /></span><span className="mono small">power {s.power} · Nen {s.lvl}</span></div>)}</div>
       {d.killers.length > 0 && <div className="sec"><h3>Most blood on their hands</h3>{d.killers.map((s) => <div key={s.id} className="kv"><span><PersonLink id={s.id} names={n} /></span><span className="mono small">{s.kills}</span></div>)}</div>}
       <div className="sec"><h3>Great events</h3><EventList events={d.great} names={n} /></div>
-      {d.ended.length > 0 && <div className="sec"><h3>Stories that have ended</h3>{d.ended.map((s) => <div key={s.id} className="kv"><span>{s.title}</span><span className="small muted">{s.from} – {s.to}</span></div>)}</div>}
+      {d.ended.length > 0 && <div className="sec"><h3>Stories that have ended</h3>{d.ended.map((s) => <div key={s.id} className="kv"><span><button className="lk" onClick={() => open({ k: 'story', id: s.id })}>{s.title}</button></span><span className="small muted">{s.from} – {s.to}</span></div>)}</div>}
       <div className="sec"><h3>The fallen</h3>{d.dead.map((x) => <div key={x.id} className="kv"><span><PersonLink id={x.id} names={n} /></span><span className="small muted" style={{ maxWidth: '62%' }}>{x.date}: {x.cause}</span></div>)}</div>
     </>
   )

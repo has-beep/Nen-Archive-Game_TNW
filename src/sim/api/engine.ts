@@ -11,6 +11,7 @@ import * as V from './views'
 import { choose, fate, forge, FATE_COST } from '../player/player'
 import { createCharacter, own, release, type CharacterSpec } from '../player/create'
 import { reindex } from '../world'
+import { fromOriginal, type ArchiveAbility, type ArchiveOC } from '../../integration/archive-adapter'
 
 export type Request =
   | { k: 'new'; opts: WorldOptions }
@@ -27,6 +28,7 @@ export type Request =
   | { k: 'create'; spec: CharacterSpec }
   | { k: 'tier'; tier: 'free' | 'supporter' | 'coffee' }
   | { k: 'frame'; minImp?: number }
+  | { k: 'importOC'; oc: ArchiveOC; ability?: ArchiveAbility }
 
 export class Engine {
   w: World | null = null
@@ -60,6 +62,10 @@ export class Engine {
       case 'forge': return forge(w, req.pid, req.spec)
       case 'create': return createCharacter(w, req.spec)
       case 'tier': w.player.tier = req.tier; return { ok: true }
+      case 'importOC': {
+        const spec = fromOriginal(req.oc, (key) => w.places.find((p) => p.key === key)?.id ?? 0, req.ability)
+        return createCharacter(w, spec)
+      }
       case 'view':
         switch (req.view) {
           case 'person': return V.personView(w, req.id!)

@@ -11,6 +11,7 @@ import { Beyond, Legends } from './panels/Beyond'
 import { You } from './panels/You'
 import { Cast, Creator, FightReplay, Forge, NewWorld } from './modals/Modals'
 import { loadSave, writeSave } from './save'
+import { listenToHost } from './host'
 
 const SPEEDS = [
   { n: 'Pause', days: 0, every: 0 },
@@ -68,7 +69,9 @@ export function App() {
       await startWorld({ seed: 1999 })
       setReady(true)
       setSpeed(1)
+      listenToHost((m) => { toast(m); pull() })
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startWorld])
 
   // The clock.

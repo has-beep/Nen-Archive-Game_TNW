@@ -333,11 +333,16 @@ function raidDay(w: World, orgId: Id, op: OrgOp) {
     return
   }
   const mafia = orgK(w, 'mafia')
-  const defenders = at(w, place.id).filter((p) => !raiders.includes(p) && (p.orgs.some((m) => w.orgs[m.org].kind === 'mafia' || w.orgs[m.org].key === 'nostrade') || p.role === 'guard') && p.nen.awake && !p.conds.length).slice(0, 6)
+  // Yorknew is the Mafia's city; anywhere else, the local guard and any
+  // Hunters in town stand in the way.
+  const mafiaTown = place.key === 'yorknew' || place.features.includes('mafia')
+  const defenders = at(w, place.id).filter((p) => !raiders.includes(p) && !p.conds.length && (
+    mafiaTown ? (p.orgs.some((m) => w.orgs[m.org].kind === 'mafia' || w.orgs[m.org].key === 'nostrade') || p.role === 'guard') && p.nen.awake
+      : p.role === 'guard' || p.role === 'soldier' || p.role === 'officer' || (p.license && p.nen.awake && p.facets.bravery > 50 && p.facets.cruelty < 60))).slice(0, 6)
   const ev = log(w, { type: 'faction', imp: 5, who: raiders.map((p) => p.id), at: place.id, orgs: [orgId], cause: op.ev, text: `The ${O(org)} strikes ${L(place)}${op.data?.auction ? ' on the night of the auction' : ''}.` })
   const out = fight(w, {
     a: raiders, b: defenders, intentA: 'kill', place: place.id, why: op.data?.auction ? 'during the raid on the auction' : 'during the raid', cause: ev, record: true,
-    extrasB: [{ name: 'Mafia guard', str: 50, agi: 45, tou: 50, skill: 55, weapon: 'smg', count: 10 }],
+    extrasB: [mafiaTown ? { name: 'Mafia guard', str: 50, agi: 45, tou: 50, skill: 55, weapon: 'smg', count: 10 } : { name: 'city guard', str: 48, agi: 45, tou: 50, skill: 50, weapon: 'rifle', count: 6 + Math.round(place.wealth * 8) }],
   })
   const won = out.res.winner === 0
   let loot = 0
@@ -346,10 +351,20 @@ function raidDay(w: World, orgId: Id, op: OrgOp) {
     const lots = (a?.lots || []).map((id) => w.items[id]).filter((it) => it && it.holder < 0)
     const holder = raiders.filter((p) => p.alive).sort((x, y) => (y.id === org.leader ? 1 : 0) - (x.id === org.leader ? 1 : 0))[0]
     for (const it of lots) { if (holder) giveItem(w, it, holder); loot += it.value }
-    org.treasury += 200 + loot * 0.05
-    mafia.treasury -= 300
-    for (const p of raiders) { p.infamy += 8; p.fame += 4; p.flags.robbedMafia = 1 }
-    log(w, { type: 'faction', imp: 4, who: raiders.map((p) => p.id), at: place.id, orgs: [orgId, mafia.id], cause: out.ev, text: `The ${O(org)} empties the vaults of ${L(place)}${lots.length ? `: ${lots.length} lots, worth ${Math.round(loot).toLocaleString('en-US')} million Jenny` : ''}. The Mafia Community swears every family will hunt them.` })
+    const take = mafiaTown ? 200 : 40 + place.wealth * 300
+    org.treasury += take + loot * 0.05
+    for (const p of raiders.filter((x) => x.alive)) p.jenny += take / Math.max(1, raiders.length) * 0.5
+    if (mafiaTown) mafia.treasury -= 300
+    place.wealth = Math.max(0.05, place.wealth - 0.05)
+    for (const p of raiders) { p.infamy += 8; p.fame += 4; if (mafiaTown) p.flags.robbedMafia = 1 }
+    log(w, { type: 'faction', imp: 4, who: raiders.map((p) => p.id), at: place.id, orgs: mafiaTown ? [orgId, mafia.id] : [orgId], cause: out.ev, text: `The ${O(org)} empties the vaults of ${L(place)}${lots.length ? `: ${lots.length} lots, worth ${Math.round(loot).toLocaleString('en-US')} million Jenny` : ''}. ${mafiaTown ? 'The Mafia Community swears every family will hunt them.' : `The ${w.nations[place.nation]?.name ?? 'city'} puts a price on every one of their heads.`}` })
+    if (!mafiaTown) {
+      const ha = orgK(w, 'ha')
+      for (const p of raiders.filter((x) => x.alive)) postContract(w, { k: 'bounty', client: -ha.id - 1, target: p.id, reward: 60 + p.fame, why: `for the raid on ${place.name}`, cause: out.ev })
+      endStory(w, `raid-${dateOf(w.epoch, w.t).y}`, out.ev, 'The vaults were emptied.')
+      for (const p of raiders) if (p.alive && p.plan?.k === 'go') p.plan = null
+      return
+    }
     // The Ten Dons answer: bounties on every Spider, and the Zoldycks for the Head.
     for (const p of raiders.filter((x) => x.alive)) postContract(w, { k: 'bounty', client: -mafia.id - 1, target: p.id, reward: 150 + p.fame * 2, why: 'for robbing the auction', cause: out.ev })
     const head = w.people[org.leader]

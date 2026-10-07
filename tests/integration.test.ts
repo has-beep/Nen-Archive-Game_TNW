@@ -21,8 +21,8 @@ describe('Nen Archive adapter', () => {
     expect(h.name).toBe('Lantern Chain')
     expect(h.cats[0][0]).toBe(2)
     expect(h.effects.map((e) => e.k)).toEqual(expect.arrayContaining(['bind', 'drain']))
-    expect(h.conds.find((c) => c.k === 'death_penalty')?.text).toMatch(/innocent/)
-    expect(h.conds.length).toBe(3)
+    expect(h.conds!.find((c) => c.k === 'death_penalty')?.text).toMatch(/innocent/)
+    expect(h.conds!.length).toBe(3)
   })
   it('turns an Original Character into a run character with the ability waiting', () => {
     const spec = fromOriginal(oc, (k) => (k === 'whale' ? 0 : 5), ability)

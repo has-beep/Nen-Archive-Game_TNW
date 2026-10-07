@@ -207,10 +207,15 @@ function troupeWeekly(w: World, org: Org) {
   const raid = org.ops.find((o) => o.k === 'raid')
   if (!raid && head?.alive && month === 6 && date.getUTCDate() <= 7 && !w.flags[`troupeRaid${date.getUTCFullYear()}`]) {
     w.flags[`troupeRaid${date.getUTCFullYear()}`] = 1
-    if (r.chance(0.55 + head.facets.greed / 300)) {
+    // Once the auction has been hit, it is guarded; they come back only now and then.
+    const hitBefore = Object.keys(w.flags).some((k) => k.startsWith('troupeHit'))
+    if (r.chance(hitBefore ? 0.18 : 0.55 + head.facets.greed / 300)) {
+      w.flags[`troupeHit${date.getUTCFullYear()}`] = 1
       const yk = placeK(w, 'yorknew')
       const due = w.t + 50 + r.int(10)
-      const ev = log(w, { type: 'faction', imp: 4, who: [head.id], at: head.loc, orgs: [org.id], text: `${P(head)} calls the whole Phantom Troupe together for the first time in years. The target: the Yorknew underground auction. "Take everything."` })
+      const ev = log(w, { type: 'faction', imp: 4, who: [head.id], at: head.loc, orgs: [org.id], text: hitBefore
+        ? `${P(head)} calls the Phantom Troupe together again. They have hit the Yorknew auction before. They are going to do it again.`
+        : `${P(head)} calls the whole Phantom Troupe together for the first time in years. The target: the Yorknew underground auction. "Take everything."` })
       org.ops.push({ k: 'raid', place: yk.id, due, start: w.t, members: ms.map((m) => m.id), ev, data: { auction: true } })
       startStory(w, 'heist', 'The Troupe comes to Yorknew', ms.slice(0, 6).map((m) => m.id), ev, `raid-${date.getUTCFullYear()}`)
       // Secret, but the Mafia's fortune tellers and informants may hear.

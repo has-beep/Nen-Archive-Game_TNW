@@ -30,6 +30,7 @@ import { playerDaily } from './player/player'
 import { isFree } from './people/person'
 import { disastersDaily, hazardsDaily } from './society/disasters'
 import { expeditionsDaily } from './society/expeditions'
+import { powersWeekly } from './society/powers'
 
 export function focusSet(w: World): Set<Id> {
   const s = new Set<Id>()
@@ -56,6 +57,7 @@ export function tick(w: World): Id[] {
     orgsWeekly(w)
     storiesWeekly(w)
     contractsTick(w)
+    powersWeekly(w)
   }
   electionTick(w)
   warsDaily(w)
